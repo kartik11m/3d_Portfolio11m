@@ -70,6 +70,7 @@ const ThreeCanvas = () => {
       const group = new THREE.Group();
       group.position.z = initialZ;
 
+      // Road
       const roadGeo = new THREE.PlaneGeometry(6, SEG_LEN);
       const roadMat = new THREE.MeshStandardMaterial({ color: '#333333', side: THREE.DoubleSide });
       const road = new THREE.Mesh(roadGeo, roadMat);
@@ -77,6 +78,7 @@ const ThreeCanvas = () => {
       road.receiveShadow = true;
       group.add(road);
 
+      // Terrain
       const terrainGeo = new THREE.PlaneGeometry(40, SEG_LEN, 100, 100);
       terrainGeo.setAttribute('uv2', new THREE.BufferAttribute(terrainGeo.attributes.uv.array, 2));
 
@@ -87,8 +89,8 @@ const ThreeCanvas = () => {
         const y0 = terrainGeo.attributes.position.getY(i);
         const nx = noise.noise(x * scale, y0 * scale, 0);
         const n2 = noise.noise(x * scale * 2.0, y0 * scale * 2.0, 10);
-        let height = nx * 1.0 + n2 * 0.3; // layered noise
-        height = Math.min(height, -0.2); // clamp to stay well below road
+        let height = nx * 1.0 + n2 * 0.3;
+        height = Math.max(height, -0.2); // clamp to avoid too low dips
         terrainGeo.attributes.position.setZ(i, height);
       }
       terrainGeo.computeVertexNormals();
@@ -114,6 +116,7 @@ const ThreeCanvas = () => {
 
       group.add(terrainLeft, terrainRight);
 
+      // Grass blades
       const grassMat = new THREE.MeshStandardMaterial({
         map: grassColor,
         normalMap: grassNormal,
@@ -128,22 +131,19 @@ const ThreeCanvas = () => {
         shadowSide: THREE.FrontSide
       });
 
-      // Custom shader for wind animation
       grassMat.onBeforeCompile = (shader) => {
         shader.uniforms.uTime = { value: 0 };
         shader.vertexShader = shader.vertexShader.replace(
           '#include <common>',
           `#include <common>
-           uniform float uTime;
-           `
+           uniform float uTime;`
         );
         shader.vertexShader = shader.vertexShader.replace(
           '#include <begin_vertex>',
           `#include <begin_vertex>
            float wind = sin(uTime + position.z * 2.0 + position.x * 0.5) * 0.15;
            transformed.x += wind * (transformed.y * 0.8);
-           transformed.z += sin(uTime * 0.7 + position.x) * 0.08 * transformed.y;
-           `
+           transformed.z += sin(uTime * 0.7 + position.x) * 0.08 * transformed.y;`
         );
         grassMat.userData.shader = shader;
       };
@@ -154,9 +154,7 @@ const ThreeCanvas = () => {
       const grassRight = new THREE.InstancedMesh(bladeGeo, grassMat, bladesPerSide);
 
       grassLeft.castShadow = true;
-      grassLeft.receiveShadow = false;
       grassRight.castShadow = true;
-      grassRight.receiveShadow = false;
 
       const dummy = new THREE.Object3D();
       for (let i = 0; i < bladesPerSide; i++) {
@@ -166,8 +164,6 @@ const ThreeCanvas = () => {
         dummy.rotation.y = Math.random() * Math.PI;
         const s = 0.7 + Math.random() * 0.6;
         dummy.scale.set(s * 0.5 + Math.random() * 0.15, s * 0.9, s * 0.5 + Math.random() * 0.15);
-        dummy.rotation.x = (Math.random() - 0.5) * 0.4 + (Math.random() - 0.5) * 0.1;
-        dummy.rotation.z = (Math.random() - 0.5) * 0.2;
         dummy.updateMatrix();
         grassLeft.setMatrixAt(i, dummy.matrix);
       }
@@ -178,8 +174,6 @@ const ThreeCanvas = () => {
         dummy.rotation.y = Math.random() * Math.PI;
         const s = 0.7 + Math.random() * 0.6;
         dummy.scale.set(s * 0.5 + Math.random() * 0.15, s * 0.9, s * 0.5 + Math.random() * 0.15);
-        dummy.rotation.x = (Math.random() - 0.5) * 0.4 + (Math.random() - 0.5) * 0.1;
-        dummy.rotation.z = (Math.random() - 0.5) * 0.2;
         dummy.updateMatrix();
         grassRight.setMatrixAt(i, dummy.matrix);
       }
@@ -188,44 +182,160 @@ const ThreeCanvas = () => {
 
       group.add(grassLeft, grassRight);
 
+            // Road stripes
       const stripeMaterial = new THREE.MeshStandardMaterial({ color: '#ffffff' });
       const stripeGroup = new THREE.Group();
       for (let i = -HALF; i < HALF; i += 5) {
-        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.01, 1), stripeMaterial);
+        const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 1), stripeMaterial);
+        stripe.rotation.x = -Math.PI / 2;
         stripe.position.set(0, 0.01, i);
         stripeGroup.add(stripe);
       }
       group.add(stripeGroup);
 
+
+      // trees and lamps
       const treeGroup = new THREE.Group();
-      const treeMaterial = new THREE.MeshStandardMaterial({ color: '#228B22' });
-      const trunkMaterial = new THREE.MeshStandardMaterial({ color: '#8B4513' });
+const lampGroup = new THREE.Group();
 
-      for (let i = -HALF; i < HALF; i += 10) {
-        const trunkL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1), trunkMaterial);
-        const crownL = new THREE.Mesh(new THREE.SphereGeometry(0.6), treeMaterial);
-        trunkL.castShadow = true;
-        crownL.castShadow = true;
-        trunkL.position.set(-3.5, -0.5, i);
-        crownL.position.set(-3.5, 0.4, i);
-        treeGroup.add(trunkL, crownL);
+const treeLoader = new GLTFLoader();
+const lampLoader = new GLTFLoader();
 
-        const trunkR = trunkL.clone();
-        const crownR = crownL.clone();
-        trunkR.position.x = 3.5;
-        crownR.position.x = 3.5;
-        treeGroup.add(trunkR, crownR);
+treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
+  const treeModel = gltf.scene.children[0] || gltf.scene;
+  treeModel.scale.set(0.01, 0.01, 0.01);
+  treeModel.updateMatrixWorld(true);
+
+  // Load lamp model once
+  lampLoader.load('/models/street_lamp.glb', (lampGltf) => {
+    const lampModel = lampGltf.scene;
+    lampModel.scale.set(0.11, 0.11, 0.11); // Adjust if needed
+    lampModel.updateMatrixWorld(true);
+
+    let treeCounter = 0;
+
+    for (let i = -HALF; i < HALF; i += 15) {
+      treeCounter++;
+
+      if (treeCounter % 3 === 0) {
+        // Left lamp
+        const lampL = lampModel.clone(true);
+        lampL.position.set(-5.5, -1, i); // adjust Y if needed
+        lampL.rotation.y = Math.PI;
+        lampL.traverse((obj) => {
+          if (obj.isMesh) obj.castShadow = true;
+        });
+        lampGroup.add(lampL);
+
+        // Right lamp
+        const lampR = lampModel.clone(true);
+        lampR.position.set(5.5, -1, i);
+        lampR.traverse((obj) => {
+          if (obj.isMesh) obj.castShadow = true;
+        });
+        lampGroup.add(lampR);
+
+      } else {
+        // Trees
+        const treeL = treeModel.clone(true);
+        treeL.position.set(-5.5, -1, i);
+        treeL.traverse((obj) => {
+          if (obj.isMesh) obj.castShadow = true;
+        });
+        treeGroup.add(treeL);
+
+        const treeR = treeModel.clone(true);
+        treeR.position.set(5.5, -1, i);
+        treeR.traverse((obj) => {
+          if (obj.isMesh) obj.castShadow = true;
+        });
+        treeGroup.add(treeR);
       }
-      group.add(treeGroup);
-
-      return group;
     }
 
+    group.add(treeGroup);
+    group.add(lampGroup);
+  });
+});
+
+return group;
+    }
+
+    // billboards: add 1–2 billboards per segment on the LEFT side
+    const billGrp = new THREE.Group();
+    const billLoader = new GLTFLoader();
+    billLoader.load('/models/billboard_lowpoly.glb', (gltf) => {
+      const billModel = gltf.scene.children[0] || gltf.scene;
+      billModel.scale.set(0.4, 0.4, 0.4);
+      billModel.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+
+      const addBillboardsToSegment = (segment) => {
+        const count = 1 + Math.floor(Math.random() * 2); // 1 or 2
+        for (let i = 0; i < count; i++) {
+          // spread evenly along the segment
+          const z = -HALF + ((i + 1) * (SEG_LEN / (count + 1)));
+          const b = billModel.clone(true);
+          b.position.set(-12, -1, z); // left side of road; adjust Y to sit on ground
+          b.rotation.z = -1;
+          segment.add(b);
+        }
+      };
+
+      addBillboardsToSegment(segment1);
+      addBillboardsToSegment(segment2);
+    });
+    // Segments
     const segment1 = createRoadSegment(0);
     const segment2 = createRoadSegment(-SEG_LEN);
     scene.add(segment1, segment2);
 
-        const sun = new THREE.Mesh(
+    // Load fences and attach continuously
+const gltfLoader = new GLTFLoader();
+gltfLoader.load('/models/fence_wood.glb', (gltf) => {
+  const fenceModel = gltf.scene.children[0] || gltf.scene;
+
+  // Ensure upright orientation
+  fenceModel.rotation.set(-1.52, 0, -0.4);
+  fenceModel.updateMatrixWorld(true);
+
+  // Measure fence length dynamically
+  const bbox = new THREE.Box3().setFromObject(fenceModel);
+  const fenceLength = bbox.max.z - bbox.min.z;
+
+  const fenceSpacing = fenceLength; // ensures no overlap
+  const fenceOffsetZ = 0.5;         // slight forward offset
+  const fenceDistLeft = -4.8;       // left side of road
+  const fenceDistRight = 4.8;       // right side of road
+
+  const addFencesToSegment = (segment) => {
+    for (let i = -HALF; i < HALF; i += fenceSpacing) {
+      // Left fence — rotate to face right (toward road center)
+      const fenceL = fenceModel.clone(true);
+      fenceL.position.set(fenceDistLeft, -0.8, i + fenceOffsetZ);
+      
+      fenceL.castShadow = true;
+      fenceL.traverse((obj) => {
+        if (obj.isMesh) obj.castShadow = true;
+      });
+      segment.add(fenceL);
+
+      // Right fence — rotate to face left (toward road center)
+      const fenceR = fenceModel.clone(true);
+      fenceR.position.set(fenceDistRight, -0.8, i + fenceOffsetZ);
+      fenceR.castShadow = true;
+      fenceR.traverse((obj) => {
+        if (obj.isMesh) obj.castShadow = true;
+      });
+      segment.add(fenceR);
+    }
+  };
+
+  addFencesToSegment(segment1);
+  addFencesToSegment(segment2);
+});
+
+    // Sun
+    const sun = new THREE.Mesh(
       new THREE.SphereGeometry(2),
       new THREE.MeshBasicMaterial({ color: '#ffcc00' })
     );
@@ -244,6 +354,7 @@ const ThreeCanvas = () => {
       if (e.key === 'ArrowDown') speed = Math.max(0, speed - 0.1);
     });
 
+    // Resume label
     const resumeDiv = document.createElement('div');
     resumeDiv.style.pointerEvents = 'auto';
     resumeDiv.style.background = 'rgba(20,20,30,0.9)';
@@ -273,9 +384,8 @@ const ThreeCanvas = () => {
     };
     window.addEventListener('click', handleClick);
 
-    // Load car model
-    const gltfLoader = new GLTFLoader();
-    gltfLoader.load('/models/classic_car.glb', (gltf) => {
+    const carLoader = new GLTFLoader();
+    carLoader.load('/models/classic_car.glb', (gltf) => {
       carModel = gltf.scene;
       carModel.scale.set(0.28, 0.28, 0.28);
       carModel.traverse((obj) => {
@@ -290,7 +400,6 @@ const ThreeCanvas = () => {
       carModel.add(resumeLabel);
     });
 
-    // Explode effect
     const explodeOffset = 0.15;
     const explodeLerp = 0.12;
     const updateExplodedView = () => {
@@ -306,22 +415,21 @@ const ThreeCanvas = () => {
 
     const clock = new THREE.Clock();
 
-    // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
-
       const time = clock.getElapsedTime();
 
+      // Grass wind
       scene.traverse((obj) => {
         if (obj.isMesh && obj.material && obj.material.userData && obj.material.userData.shader) {
           obj.material.userData.shader.uniforms.uTime.value = time;
         }
       });
 
+      // Move segments
       segment1.position.z += speed;
       segment2.position.z += speed;
 
-      // Seamless recycling
       if (segment1.position.z > HALF) {
         segment1.position.z = segment2.position.z - SEG_LEN;
       }
@@ -329,12 +437,12 @@ const ThreeCanvas = () => {
         segment2.position.z = segment1.position.z - SEG_LEN;
       }
 
+      // Car + camera follow
       if (carModel) {
         carModel.position.set(0, 0.1, 0);
         carModel.rotation.y = Math.PI;
-
         const carPos = carModel.getWorldPosition(new THREE.Vector3());
-        const camOffset = new THREE.Vector3(0, 3.5, 6);
+                const camOffset = new THREE.Vector3(0, 3.5, 6);
         const targetCamPos = carPos.clone().add(camOffset);
         camera.position.lerp(targetCamPos, 0.1);
         camera.lookAt(carPos);
@@ -347,6 +455,7 @@ const ThreeCanvas = () => {
     };
     animate();
 
+    // Handle resize
     const handleResize = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -357,6 +466,7 @@ const ThreeCanvas = () => {
     };
     window.addEventListener('resize', handleResize);
 
+    // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('click', handleClick);
