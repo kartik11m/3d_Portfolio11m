@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import StartMenu from './StartMenu';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
@@ -7,6 +8,78 @@ import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js';
 
 const ThreeCanvas = () => {
   const mountRef = useRef(null);
+  const [started, setStarted] = useState(false);
+  const [showLicense, setShowLicense] = useState(false);
+  const [showResume, setShowResume] = useState(false);
+  const [isEditingLicense, setIsEditingLicense] = useState(false);
+  const placeholderPhoto = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="320"><rect width="100%" height="100%" fill="%23ddd"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23666" font-size="24">Photo</text></svg>';
+  const [licenseData, setLicenseData] = useState({
+    name: 'Kartik Maheshwari',
+    dob: '2005-12-05',
+    licenseNo: 'DL-12345678',
+    address: 'Indore, MP, India',
+    classField: 'B',
+    college: 'Madhav Institute of Technology and Science (Gwalior)',
+    issueDate: '2023-01-01',
+    expiryDate: '2028-01-01',
+    signature: 'Kartik Maheshwari',
+    photo: '/license_photo.png'
+  });
+  const licenseRef = useRef(null);
+
+  // If the default image path doesn't load, fall back to the placeholder
+  useEffect(() => {
+    if (!licenseData.photo || !licenseData.photo.startsWith('/')) return;
+    const img = new Image();
+    img.onload = () => { /* success */ };
+    img.onerror = () => setLicenseData(ld => ({ ...ld, photo: placeholderPhoto }));
+    img.src = licenseData.photo;
+    // run only once on mount to validate default path
+  }, []);
+
+  const handleLicenseChange = (key, value) => {
+    setLicenseData(ld => ({ ...ld, [key]: value }));
+  };
+
+  const handlePhotoFile = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => setLicenseData(ld => ({ ...ld, photo: e.target.result }));
+    reader.readAsDataURL(file);
+  };
+
+  const handleResetPhoto = () => setLicenseData(ld => ({ ...ld, photo: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="320"><rect width="100%" height="100%" fill="%23ddd"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23666" font-size="24">Photo</text></svg>' }));
+
+  const handlePrintLicense = () => {
+    const w = window.open('', '_blank', 'width=800,height=600');
+    if (!w || !licenseRef.current) return;
+    const html = `
+      <html><head><title>Driver's License</title>
+      <style>
+        body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f3f3f3;display:flex;align-items:center;justify-content:center;height:100vh}
+        .card{width:560px;background:#fff;padding:16px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.2)}
+        .photo{float:left;width:160px;height:200px;background-size:cover;background-position:center;border-radius:6px;border:2px solid #ddd;margin-right:12px}
+        .label{font-size:12px;color:#666}
+        .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee}
+      </style>
+      </head><body><div class="card">${licenseRef.current.innerHTML}</div><script>setTimeout(()=>{window.print();},200);</script></body></html>
+    `;
+    w.document.write(html);
+    w.document.close();
+  };
+
+  const handleSaveLicense = () => {
+    setIsEditingLicense(false);
+  };
+
+  const speedRef = useRef(0);
+  const startedRef = useRef(false);
+
+  // keep startedRef and speedRef in sync with `started` state
+  useEffect(() => {
+    startedRef.current = started;
+    speedRef.current = started ? 0.2 : 0;
+  }, [started]);
 
   useEffect(() => {
     const w = window.innerWidth;
@@ -347,28 +420,30 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
     let carParts = [];
     const originalPositions = new Map();
     let exploded = false;
-    let speed = 0.2;
 
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowUp') speed = Math.min(0.7, speed + 0.1);
-      if (e.key === 'ArrowDown') speed = Math.max(0, speed - 0.1);
-    });
+    // key handler updates speedRef — only effective after start
+    const handleKeyDown = (e) => {
+      if (!startedRef.current) return;
+      if (e.key === 'ArrowUp') speedRef.current = Math.min(0.7, speedRef.current + 0.1);
+      if (e.key === 'ArrowDown') speedRef.current = Math.max(0, speedRef.current - 0.1);
+    };
+    window.addEventListener('keydown', handleKeyDown);
 
     // Resume label
-    const resumeDiv = document.createElement('div');
-    resumeDiv.style.pointerEvents = 'auto';
-    resumeDiv.style.background = 'rgba(20,20,30,0.9)';
-    resumeDiv.style.color = '#fff';
-    resumeDiv.style.padding = '10px';
-    resumeDiv.style.borderRadius = '8px';
-    resumeDiv.innerHTML = `<strong>Driver's License</strong><br/>Tap to view resume`;
-    const resumeLabel = new CSS2DObject(resumeDiv);
-    resumeLabel.visible = false;
+    // const resumeDiv = document.createElement('div');
+    // resumeDiv.style.pointerEvents = 'auto';
+    // resumeDiv.style.background = 'rgba(20,20,30,0.9)';
+    // resumeDiv.style.color = '#fff';
+    // resumeDiv.style.padding = '10px';
+    // resumeDiv.style.borderRadius = '8px';
+    // resumeDiv.innerHTML = `<strong>Driver's License</strong><br/>Tap to view resume`;
+    // const resumeLabel = new CSS2DObject(resumeDiv);
+    // resumeLabel.visible = false;
 
-    resumeDiv.addEventListener('click', (e) => {
-      e.stopPropagation();
-      window.open('/resume.pdf', '_blank');
-    });
+    // resumeDiv.addEventListener('click', (e) => { 
+    //   e.stopPropagation();
+    //   window.open('/resume.pdf', '_blank');
+    // });
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -427,8 +502,8 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
       });
 
       // Move segments
-      segment1.position.z += speed;
-      segment2.position.z += speed;
+      segment1.position.z += speedRef.current;
+      segment2.position.z += speedRef.current;
 
       if (segment1.position.z > HALF) {
         segment1.position.z = segment2.position.z - SEG_LEN;
@@ -470,20 +545,87 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('click', handleClick);
+      window.removeEventListener('keydown', handleKeyDown);
       controls.dispose();
     };
   }, []);
 
   return (
-    <div
-      ref={mountRef}
-      style={{
-        width: '100vw',
-        height: '100vh',
-        overflow: 'hidden',
-        position: 'relative',
-      }}
-    />
+    <>
+      <div
+        ref={mountRef}
+        style={{
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      />
+
+      <StartMenu
+        visible={!started}
+        onStart={() => setStarted(true)}
+        onShowLicense={() => setShowLicense(true)}
+        onShowResume={() => { window.open('/resume.pdf', '_blank'); setShowResume(true); }}
+      />
+
+      {started && (
+        <button className="main-menu-btn" onClick={() => setStarted(false)} title="Menu">☰</button>
+      )}
+
+      {showLicense && (
+        <div className="license-modal" onClick={() => { setShowLicense(false); setIsEditingLicense(false); }}>
+          <div className="license-card" onClick={(e) => e.stopPropagation()} ref={licenseRef}>
+
+            <div className="license-left">
+              <div className="license-photo" style={{ backgroundImage: `url(${licenseData.photo})` }} />
+
+              {isEditingLicense && (
+                <div style={{ marginTop: 8 }}>
+                  <input type="file" accept="image/*" onChange={(e) => e.target.files && handlePhotoFile(e.target.files[0])} />
+                  <div style={{ marginTop: 6 }}>
+                    <button className="btn" onClick={handleResetPhoto}>Reset Photo</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="license-right">
+              <h2>Driver's License</h2>
+
+              <div className="license-grid">
+                <div className="field"><div className="label">Name</div>{isEditingLicense ? <input type="text" value={licenseData.name} onChange={(e)=>handleLicenseChange('name', e.target.value)} /> : <div>{licenseData.name}</div>}</div>
+                <div className="field"><div className="label">DOB</div>{isEditingLicense ? <input type="date" value={licenseData.dob} onChange={(e)=>handleLicenseChange('dob', e.target.value)} /> : <div>{licenseData.dob}</div>}</div>
+                <div className="field"><div className="label">License No</div>{isEditingLicense ? <input type="text" value={licenseData.licenseNo} onChange={(e)=>handleLicenseChange('licenseNo', e.target.value)} /> : <div>{licenseData.licenseNo}</div>}</div>
+                <div className="field"><div className="label">Class</div>{isEditingLicense ? <input type="text" value={licenseData.classField} onChange={(e)=>handleLicenseChange('classField', e.target.value)} /> : <div>{licenseData.classField}</div>}</div>
+                <div className="field" style={{ gridColumn: '1 / -1' }}><div className="label">Address</div>{isEditingLicense ? <input type="text" value={licenseData.address} onChange={(e)=>handleLicenseChange('address', e.target.value)} /> : <div>{licenseData.address}</div>}</div>
+                <div className="field" style={{ gridColumn: '1 / -1' }}><div className="label">College</div>{isEditingLicense ? <input type="text" value={licenseData.college} onChange={(e)=>handleLicenseChange('college', e.target.value)} /> : <div>{licenseData.college}</div>}</div>
+                <div className="field"><div className="label">Issue</div>{isEditingLicense ? <input type="date" value={licenseData.issueDate} onChange={(e)=>handleLicenseChange('issueDate', e.target.value)} /> : <div>{licenseData.issueDate}</div>}</div>
+                <div className="field"><div className="label">Expiry</div>{isEditingLicense ? <input type="date" value={licenseData.expiryDate} onChange={(e)=>handleLicenseChange('expiryDate', e.target.value)} /> : <div>{licenseData.expiryDate}</div>}</div>
+              </div>
+
+              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div className="label">Signature</div>
+                  <div style={{ fontFamily: 'Brush Script MT, cursive', fontSize: 20 }}>{licenseData.signature}</div>
+                </div>
+
+                <div className="license-actions">
+                  {isEditingLicense ? <button className="btn primary" onClick={()=>{handleSaveLicense()}}>Save</button> : <button className="btn"
+                  //  onClick={()=>setIsEditingLicense(true)}
+                   >
+                    Edit</button>}
+                  <button className="btn" onClick={handlePrintLicense}>Print / Save</button>
+                  <button className="btn" onClick={() => { navigator.clipboard?.writeText(JSON.stringify(licenseData)); alert('License data copied to clipboard'); }}>Copy Data</button>
+                  <button className="btn" onClick={() => { setShowLicense(false); setIsEditingLicense(false); }}>Close</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
