@@ -43,3 +43,19 @@
 /* Main menu button (appears in top-right while playing) */
 .main-menu-btn{position:fixed;top:16px;right:16px;z-index:10001;background:#ff8c42;border:none;color:#111;padding:10px 12px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.2);cursor:pointer;font-weight:700}
 .main-menu-btn:hover{transform:translateY(-2px)}
+
+/* Exit FPP button */
+.fpp-exit-btn{position:fixed;top:16px;left:16px;z-index:10001;background:#2b3a42;border:none;color:#fff;padding:8px 10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.2);cursor:pointer;font-weight:600}
+.fpp-exit-btn:hover{transform:translateY(-2px)}
+
+/* HUD */
+.hud{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:18px;align-items:center;z-index:10002}
+.speedometer{background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;border-radius:8px;text-align:center}
+.speed-value{font-size:20px;font-weight:800}
+.speed-label{font-size:11px;color:#ddd}
+.steering-wheel{width:84px;height:84px;border-radius:50%;border:5px solid rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4)}
+.wheel-inner{width:56px;height:56px;border-radius:50%;border:6px solid rgba(255,255,255,0.22);box-sizing:border-box}
+
+/* in-car display (CSS2D object) */
+.car-display{font-family:Arial,Helvetica,sans-serif;border-radius:6px;padding:8px;pointer-events:none}
+

@@ -27,6 +27,14 @@ const ThreeCanvas = () => {
   });
   const licenseRef = useRef(null);
 
+  // HUD DOM refs and in-car display ref
+  const hudSpeedDomRef = useRef(null);
+  const hudWheelDomRef = useRef(null);
+  const carDisplayRef = useRef(null);
+  // Steering angle state and ref (used for HUD steering wheel)
+  const steerRef = useRef(0);
+  const [steerAngle, setSteerAngle] = useState(0);
+
   // If the default image path doesn't load, fall back to the placeholder
   useEffect(() => {
     if (!licenseData.photo || !licenseData.photo.startsWith('/')) return;
@@ -49,6 +57,15 @@ const ThreeCanvas = () => {
   };
 
   const handleResetPhoto = () => setLicenseData(ld => ({ ...ld, photo: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="320"><rect width="100%" height="100%" fill="%23ddd"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23666" font-size="24">Photo</text></svg>' }));
+
+  // mouse handler to control steering HUD; only updates while in FPP
+  const handleMouseMoveForSteer = (e) => {
+    if (!isFPPRef.current) return; // only update steering when in first-person
+    const x = e.clientX / window.innerWidth;
+    const angle = (x - 0.5) * 2 * 45;
+    steerRef.current = angle;
+    setSteerAngle(angle);
+  };
 
   const handlePrintLicense = () => {
     const w = window.open('', '_blank', 'width=800,height=600');
@@ -74,6 +91,11 @@ const ThreeCanvas = () => {
 
   const speedRef = useRef(0);
   const startedRef = useRef(false);
+
+  // first-person flag (driver's-eye) and ref for the animation loop
+  const [isFPP, setIsFPP] = useState(false);
+  const isFPPRef = useRef(false);
+  useEffect(() => { isFPPRef.current = isFPP; }, [isFPP]);
 
   // keep startedRef and speedRef in sync with `started` state
   useEffect(() => {
@@ -111,7 +133,9 @@ const ThreeCanvas = () => {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.04;
-    controls.enabled = false;
+    // enable orbit controls in both FPP and TPP — we'll update target each frame
+    controls.enabled = true;
+    controls.enablePan = false;
 
     const sunLight = new THREE.DirectionalLight(0xffffff, 2);
     sunLight.position.set(5, 10, 5);
@@ -426,24 +450,34 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
       if (!startedRef.current) return;
       if (e.key === 'ArrowUp') speedRef.current = Math.min(0.7, speedRef.current + 0.1);
       if (e.key === 'ArrowDown') speedRef.current = Math.max(0, speedRef.current - 0.1);
+
+      // Toggle first-person view with 'F' and exit with Escape
+      if (e.key && e.key.toLowerCase && e.key.toLowerCase() === 'f') {
+        setIsFPP(prev => !prev);
+      }
+      if (e.key === 'Escape' && isFPPRef.current) {
+        setIsFPP(false);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
+    // steering mouse moves (only active while FPP) — add listener always but we check flag in handler
+    window.addEventListener('mousemove', handleMouseMoveForSteer);
 
     // Resume label
-    // const resumeDiv = document.createElement('div');
-    // resumeDiv.style.pointerEvents = 'auto';
-    // resumeDiv.style.background = 'rgba(20,20,30,0.9)';
-    // resumeDiv.style.color = '#fff';
-    // resumeDiv.style.padding = '10px';
-    // resumeDiv.style.borderRadius = '8px';
-    // resumeDiv.innerHTML = `<strong>Driver's License</strong><br/>Tap to view resume`;
-    // const resumeLabel = new CSS2DObject(resumeDiv);
-    // resumeLabel.visible = false;
+    const resumeDiv = document.createElement('div');
+    resumeDiv.style.pointerEvents = 'auto';
+    resumeDiv.style.background = 'rgba(20,20,30,0.9)';
+    resumeDiv.style.color = '#fff';
+    resumeDiv.style.padding = '10px';
+    resumeDiv.style.borderRadius = '8px';
+    resumeDiv.innerHTML = `<strong>Driver's License</strong><br/>Tap to view resume`;
+    const resumeLabel = new CSS2DObject(resumeDiv);
+    resumeLabel.visible = false;
 
-    // resumeDiv.addEventListener('click', (e) => { 
-    //   e.stopPropagation();
-    //   window.open('/resume.pdf', '_blank');
-    // });
+    resumeDiv.addEventListener('click', (e) => { 
+      e.stopPropagation();
+      window.open('/resume.pdf', '_blank');
+    });
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -453,8 +487,16 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(carModel ? [carModel] : [], true);
       if (intersects.length > 0) {
-        exploded = !exploded;
-        resumeLabel.visible = true;
+        // If Shift+Click, toggle exploded view and show resume label (legacy behavior)
+        if (event.shiftKey) {
+          exploded = !exploded;
+          resumeLabel.visible = true;
+        } else {
+          // Click toggles first-person (driver) view
+          setIsFPP(prev => !prev);
+          resumeLabel.visible = false;
+        }
+        return;
       }
     };
     window.addEventListener('click', handleClick);
@@ -473,6 +515,21 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
       scene.add(carModel);
       resumeLabel.position.set(0, 0.4, 0);
       carModel.add(resumeLabel);
+
+      // create a small in-car display using CSS2D
+      const displayDiv = document.createElement('div');
+      displayDiv.className = 'car-display';
+      displayDiv.style.background = 'rgba(10,10,20,0.9)';
+      displayDiv.style.color = '#fff';
+      displayDiv.style.padding = '6px 8px';
+      displayDiv.style.borderRadius = '6px';
+      displayDiv.style.fontSize = '12px';
+      displayDiv.style.minWidth = '120px';
+      displayDiv.innerHTML = `<div>Speed: 0 km/h</div><div style="font-size:11px;color:#bbb">Press F to toggle view</div>`;
+      carDisplayRef.current = displayDiv;
+      const displayObj = new CSS2DObject(displayDiv);
+      displayObj.position.set(0, 0.6, -0.7); // slightly in front of driver
+      carModel.add(displayObj);
     });
 
     const explodeOffset = 0.15;
@@ -516,13 +573,45 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
       if (carModel) {
         carModel.position.set(0, 0.1, 0);
         carModel.rotation.y = Math.PI;
-        const carPos = carModel.getWorldPosition(new THREE.Vector3());
-                const camOffset = new THREE.Vector3(0, 3.5, 6);
-        const targetCamPos = carPos.clone().add(camOffset);
-        camera.position.lerp(targetCamPos, 0.1);
-        camera.lookAt(carPos);
+
+        // First-person: position camera at the driver's seat inside the car
+        if (isFPPRef.current) {
+          // local offset from car origin to driver's eye (tweak these values to taste)
+          // Use a forward-facing local Z (negative Z is forward in Three.js)
+          const driverLocal = new THREE.Vector3(0.8, 1.2, -0.7);
+          // convert to world space
+          const driverWorld = carModel.localToWorld(driverLocal.clone());
+
+          // set camera position immediately for sharp response
+          camera.position.copy(driverWorld);
+
+          // look at a point in front of the car (local -Z), converted to world space
+          const forwardLocal = new THREE.Vector3(0, 0, 10);
+          const forwardWorld = carModel.localToWorld(forwardLocal.clone());
+          camera.lookAt(forwardWorld);
+        } else {
+          // third-person follow()
+          const carPos = carModel.getWorldPosition(new THREE.Vector3());
+          const camOffset = new THREE.Vector3(0, 3.5, 6);
+          const targetCamPos = carPos.clone().add(camOffset);
+          camera.position.lerp(targetCamPos, 0.1);
+          camera.lookAt(carPos);
+        }
 
         updateExplodedView();
+      }
+
+      // update HUD (speed and steering)
+      if (isFPPRef.current) {
+        const speedKmh = Math.round(speedRef.current * 250); // mapping to ~km/h for effect
+        if (hudSpeedDomRef.current) hudSpeedDomRef.current.innerText = `${speedKmh} km/h`;
+        if (hudWheelDomRef.current) hudWheelDomRef.current.style.transform = `rotate(${steerRef.current}deg)`;
+      }
+
+      // update in-car display
+      if (carDisplayRef.current) {
+        const speedKmh = Math.round(speedRef.current * 250);
+        carDisplayRef.current.innerHTML = `<div style="font-weight:700">Speed: ${speedKmh} km/h</div><div style='font-size:11px;color:#ccc'>FPP: ${isFPPRef.current ? 'ON' : 'OFF'}</div>`;
       }
 
       renderer.render(scene, camera);
@@ -546,6 +635,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('click', handleClick);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mousemove', handleMouseMoveForSteer);
       controls.dispose();
     };
   }, []);
@@ -571,6 +661,22 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
 
       {started && (
         <button className="main-menu-btn" onClick={() => setStarted(false)} title="Menu">☰</button>
+      )}
+
+      {isFPP && (
+        <>
+          <button className="fpp-exit-btn" onClick={() => setIsFPP(false)} title="Exit First-Person">Exit FPP</button>
+
+          <div className="hud" style={{ display: isFPP ? 'flex' : 'none' }}>
+            <div className="speedometer">
+              <div className="speed-value" ref={hudSpeedDomRef}>0 km/h</div>
+              <div className="speed-label">Speed</div>
+            </div>
+            <div className="steering-wheel" ref={hudWheelDomRef} style={{ transform: `rotate(${steerAngle}deg)` }}>
+              <div className="wheel-inner" />
+            </div>
+          </div>
+        </>
       )}
 
       {showLicense && (
