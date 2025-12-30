@@ -85,9 +85,56 @@ const ThreeCanvas = () => {
     w.document.close();
   };
 
+  // Open a car-display-styled details page using current license data
+  const openCarDisplayDetails = () => {
+    const w = window.open('', '_blank', 'width=680,height=520');
+    if (!w) return;
+    const html = `
+      <html><head><title>Car Display — Driver Info</title>
+      <meta name="viewport" content="width=device-width,initial-scale=1" />
+      <style>
+        html,body{height:100%;margin:0}
+        body{background:#060606;color:#b9f6ca;font-family:monospace,system-ui,Segoe UI,Roboto,Arial;margin:0;display:flex;align-items:center;justify-content:center}
+        .panel{width:620px;height:420px;background:linear-gradient(180deg,#050606 0%, #0b0b0c 100%);border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.03);position:relative}
+        .heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+        .title{font-size:16px;color:#ff6b61;font-weight:700}
+        .status{font-size:12px;color:#ff9f9f}
+        .grid{display:grid;grid-template-columns:120px 1fr;gap:8px 16px;align-items:center}
+        .label{color:#9fbf9a;font-size:12px}
+        .value{font-size:14px;color:#dfffe8}
+        .photo{width:120px;height:160px;background-size:cover;background-position:center;border-radius:6px;border:2px solid rgba(255,255,255,0.04)}
+        .actions{position:absolute;bottom:14px;right:18px}
+        .btn{background:#120909;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-family:inherit}
+      </style>
+      </head><body>
+      <div class="panel">
+        <div class="heading"><div class="title">Driver Display</div><div class="status">In-Vehicle • Secure</div></div>
+        <div style="display:flex;gap:18px">
+          <div class="photo" style="background-image: url(${licenseData.photo || ''})"></div>
+          <div style="flex:1">
+            <div class="grid">
+              <div class="label">Name</div><div class="value">${licenseData.name}</div>
+              <div class="label">DOB</div><div class="value">${licenseData.dob}</div>
+              <div class="label">License No</div><div class="value">${licenseData.licenseNo}</div>
+              <div class="label">Class</div><div class="value">${licenseData.classField}</div>
+              <div class="label">College</div><div class="value">${licenseData.college}</div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" onclick="window.print();">Print</button>
+          <button class="btn" onclick="window.close();" style="margin-left:8px">Close</button>
+        </div>
+      </div>
+      </body></html>
+    `;
+    w.document.write(html);
+    w.document.close();
+  };
+
   const handleSaveLicense = () => {
     setIsEditingLicense(false);
-  };
+  }; 
 
   const speedRef = useRef(0);
   const startedRef = useRef(false);
@@ -445,11 +492,34 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
     const originalPositions = new Map();
     let exploded = false;
 
+    // Display anchor + in-car screen canvas & texture (for an emissive 3D screen on the dashboard)
+    let displayAnchor = null; // set to dashboard mesh when found
+    let screenDepthOffset = 0.0; // nudging depth (adjust with [ / ])
+    let screenDebugOverlay = null;
+
+    let screenCanvas = null;
+    let screenCtx = null;
+    let screenTexture = null;
+    let screenMesh = null;
+    let drawScreenFunc = null; // assigned when the GLTF is ready
+
     // key handler updates speedRef — only effective after start
     const handleKeyDown = (e) => {
       if (!startedRef.current) return;
       if (e.key === 'ArrowUp') speedRef.current = Math.min(0.7, speedRef.current + 0.1);
       if (e.key === 'ArrowDown') speedRef.current = Math.max(0, speedRef.current - 0.1);
+
+      // small nudge: adjust screen depth with [ and ] (for quick placement tweaks)
+      if (e.key === '[') {
+        screenDepthOffset = Math.max(-0.5, screenDepthOffset - 0.005);
+        if (screenDebugOverlay) screenDebugOverlay.innerText = `Screen depth: ${screenDepthOffset.toFixed(3)}\nUse [ and ] to adjust`;
+        console.log('screenDepthOffset', screenDepthOffset);
+      }
+      if (e.key === ']') {
+        screenDepthOffset = Math.min(0.5, screenDepthOffset + 0.005);
+        if (screenDebugOverlay) screenDebugOverlay.innerText = `Screen depth: ${screenDepthOffset.toFixed(3)}\nUse [ and ] to adjust`;
+        console.log('screenDepthOffset', screenDepthOffset);
+      }
 
       // Toggle first-person view with 'F' and exit with Escape
       if (e.key && e.key.toLowerCase && e.key.toLowerCase() === 'f') {
@@ -502,7 +572,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
     window.addEventListener('click', handleClick);
 
     const carLoader = new GLTFLoader();
-    carLoader.load('/models/classic_car.glb', (gltf) => {
+    carLoader.load('/models/car1.glb', (gltf) => {
       carModel = gltf.scene;
       carModel.scale.set(0.28, 0.28, 0.28);
       carModel.traverse((obj) => {
@@ -516,20 +586,126 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
       resumeLabel.position.set(0, 0.4, 0);
       carModel.add(resumeLabel);
 
-      // create a small in-car display using CSS2D
+      // Find a good anchor mesh on the dashboard (if available). fallback to car root
+      let displayAnchor = carModel;
+      carModel.traverse((obj) => {
+        if (obj.isMesh && /(dash|screen|radio|display|console|pioneer|cluster|tft|panel)/i.test(obj.name)) {
+          displayAnchor = obj;
+        }
+      });
+
+      // create a small in-car display using CSS2D (clickable and styled like a real car screen)
+      console.log('Car display anchored to:', displayAnchor.name || 'root (carModel)');
       const displayDiv = document.createElement('div');
       displayDiv.className = 'car-display';
-      displayDiv.style.background = 'rgba(10,10,20,0.9)';
-      displayDiv.style.color = '#fff';
-      displayDiv.style.padding = '6px 8px';
-      displayDiv.style.borderRadius = '6px';
-      displayDiv.style.fontSize = '12px';
+      displayDiv.style.pointerEvents = 'auto'; // enable clicks inside the CSS2D element
+      displayDiv.style.background = 'rgba(0,0,0,0.88)';
+      displayDiv.style.padding = '8px';
+      displayDiv.style.borderRadius = '8px';
+      displayDiv.style.color = '#dfffe8';
       displayDiv.style.minWidth = '120px';
-      displayDiv.innerHTML = `<div>Speed: 0 km/h</div><div style="font-size:11px;color:#bbb">Press F to toggle view</div>`;
+
+      displayDiv.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="left-icons" style="display:flex;flex-direction:column;gap:6px;width:36px;align-items:center;color:#ff7b6b">
+            <div style="font-size:14px">⚑</div>
+            <div style="font-size:14px">♪</div>
+            <div style="font-size:14px">🔋</div>
+            <div style="font-size:14px">⚙</div>
+          </div>
+          <div class="screen" style="background:#060606;border-radius:6px;padding:8px;min-width:140px;min-height:64px;color:#dfffe8;border:1px solid rgba(255,255,255,0.03)">
+            <div class="speed-line" style="font-size:15px;font-weight:800;color:#7ff7a2">Speed: 0 km/h</div>
+            <div style="font-size:11px;color:#9fbf9a;margin-top:6px">Press F to toggle view</div>
+            <button class="details-btn" style="margin-top:8px;background:#071010;border:1px solid rgba(127,255,190,0.08);color:#9ff6b8;padding:6px;border-radius:6px;cursor:pointer;font-size:11px">More details</button>
+          </div>
+        </div>
+      `;
+
+      // wire up button to open a car-display-styled details page
+      const detailsBtn = displayDiv.querySelector('.details-btn');
+      if (detailsBtn) detailsBtn.onclick = (e) => { e.stopPropagation(); openCarDisplayDetails(); };
+
       carDisplayRef.current = displayDiv;
       const displayObj = new CSS2DObject(displayDiv);
-      displayObj.position.set(0, 0.6, -0.7); // slightly in front of driver
-      carModel.add(displayObj);
+      // Attach the label to dashboard anchor so it moves with the interior
+      displayObj.position.set(0, 0, 0);
+      displayAnchor.add(displayObj);
+
+      // Create a canvas for a physical in-world screen (gives a realistic emissive display)
+      screenCanvas = document.createElement('canvas');
+      screenCanvas.width = 512;
+      screenCanvas.height = 256;
+      screenCtx = screenCanvas.getContext('2d');
+
+      const drawScreen = (speedKmh, isFPP) => {
+        const ctx = screenCtx;
+        if (!ctx) return;
+        // background
+        ctx.fillStyle = '#030303';
+        ctx.fillRect(0, 0, screenCanvas.width, screenCanvas.height);
+
+        // left icons column
+        ctx.fillStyle = '#ff6b6b';
+        ctx.font = '28px serif';
+        ctx.fillText('⚑', 18, 46);
+        ctx.fillText('♪', 18, 96);
+        ctx.fillText('🔋', 18, 146);
+        ctx.fillText('⚙', 18, 196);
+
+        // main display area
+        ctx.fillStyle = '#07120b';
+        ctx.fillRect(80, 30, 420, 196);
+
+        ctx.fillStyle = '#7ff7a2';
+        ctx.font = '36px monospace';
+        ctx.fillText(`Speed: ${speedKmh} km/h`, 96, 94);
+
+        ctx.fillStyle = '#9fbf9a';
+        ctx.font = '16px monospace';
+        ctx.fillText('Press F to toggle view', 96, 132);
+
+        // details button box
+        ctx.strokeStyle = 'rgba(159,255,154,0.12)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(96, 152, 160, 36);
+        ctx.fillStyle = '#9ff6b8';
+        ctx.font = '16px monospace';
+        ctx.fillText('More details', 110, 178);
+      };
+
+      // Draw initial content and expose draw function to the animation loop
+      drawScreen(0, false);
+      drawScreenFunc = drawScreen;
+      screenTexture = new THREE.CanvasTexture(screenCanvas);
+      screenTexture.encoding = THREE.sRGBEncoding;
+
+      const screenMat = new THREE.MeshBasicMaterial({ map: screenTexture, side: THREE.FrontSide });
+      screenMat.transparent = false;
+      const screenGeo = new THREE.PlaneGeometry(0.46, 0.23);
+      screenMesh = new THREE.Mesh(screenGeo, screenMat);
+
+      // We'll position this mesh each frame using the anchor's bounding box so it sits flush in the dash
+      screenMesh.renderOrder = 999;
+      screenMesh.frustumCulled = false;
+
+      // Add to scene and compute world placement in the animation loop (keeps it parented logically but allows precise placement)
+      scene.add(screenMesh);
+
+      // Debug overlay for nudging placement (visible in top-left)
+      if (mountRef && mountRef.current) {
+        screenDebugOverlay = document.createElement('div');
+        screenDebugOverlay.style.position = 'absolute';
+        screenDebugOverlay.style.left = '12px';
+        screenDebugOverlay.style.top = '12px';
+        screenDebugOverlay.style.padding = '6px 8px';
+        screenDebugOverlay.style.background = 'rgba(0,0,0,0.5)';
+        screenDebugOverlay.style.color = '#bfffd6';
+        screenDebugOverlay.style.fontSize = '12px';
+        screenDebugOverlay.style.borderRadius = '6px';
+        screenDebugOverlay.style.pointerEvents = 'none';
+        screenDebugOverlay.innerText = `Screen depth: ${screenDepthOffset.toFixed(3)}\nUse [ and ] to adjust`;
+        mountRef.current.appendChild(screenDebugOverlay);
+      }
     });
 
     const explodeOffset = 0.15;
@@ -578,7 +754,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
         if (isFPPRef.current) {
           // local offset from car origin to driver's eye (tweak these values to taste)
           // Use a forward-facing local Z (negative Z is forward in Three.js)
-          const driverLocal = new THREE.Vector3(0.8, 1.2, -0.7);
+          const driverLocal = new THREE.Vector3(1.2, 3.5, -0.7);
           // convert to world space
           const driverWorld = carModel.localToWorld(driverLocal.clone());
 
@@ -586,7 +762,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
           camera.position.copy(driverWorld);
 
           // look at a point in front of the car (local -Z), converted to world space
-          const forwardLocal = new THREE.Vector3(0, 0, 10);
+          const forwardLocal = new THREE.Vector3(0, 0, 20);
           const forwardWorld = carModel.localToWorld(forwardLocal.clone());
           camera.lookAt(forwardWorld);
         } else {
@@ -608,10 +784,59 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
         if (hudWheelDomRef.current) hudWheelDomRef.current.style.transform = `rotate(${steerRef.current}deg)`;
       }
 
-      // update in-car display
+      // update in-car display (CSS2D) + physical canvas-based screen
+      const speedKmh = Math.round(speedRef.current * 250);
       if (carDisplayRef.current) {
-        const speedKmh = Math.round(speedRef.current * 250);
-        carDisplayRef.current.innerHTML = `<div style="font-weight:700">Speed: ${speedKmh} km/h</div><div style='font-size:11px;color:#ccc'>FPP: ${isFPPRef.current ? 'ON' : 'OFF'}</div>`;
+        // Update numeric fields inside the existing markup to avoid reflowing the whole element
+        const speedLine = carDisplayRef.current.querySelector('.speed-line');
+        if (speedLine) speedLine.innerText = `Speed: ${speedKmh} km/h`;
+        const fppLine = carDisplayRef.current.querySelector('.fpp-line');
+        if (fppLine) fppLine.innerText = `FPP: ${isFPPRef.current ? 'ON' : 'OFF'}`;
+        else {
+          const f = document.createElement('div');
+          f.className = 'fpp-line';
+          f.style.fontSize = '11px';
+          f.style.color = '#ccc';
+          f.style.marginTop = '4px';
+          f.innerText = `FPP: ${isFPPRef.current ? 'ON' : 'OFF'}`;
+          carDisplayRef.current.appendChild(f);
+        }
+      }
+
+      // Update the 3D canvas-based screen if it exists
+      if (drawScreenFunc && screenTexture) {
+        drawScreenFunc(speedKmh, isFPPRef.current);
+        screenTexture.needsUpdate = true;
+      }
+
+      // Position the physical screen flush with the dashboard anchor (auto-alignment)
+      if (screenMesh && displayAnchor) {
+        try {
+          const bbox = new THREE.Box3().setFromObject(displayAnchor);
+          const center = bbox.getCenter(new THREE.Vector3());
+          const size = bbox.getSize(new THREE.Vector3());
+
+          // outward direction is from anchor center to camera; push a bit outside the surface
+          const outward = camera.position.clone().sub(center).normalize();
+          const push = Math.max(size.x, size.y, size.z) * 0.5 + 0.005 + screenDepthOffset;
+          const worldPos = center.clone().add(outward.multiplyScalar(push));
+
+          screenMesh.position.copy(worldPos);
+
+          // make the plane face the camera
+          const lookAtMat = new THREE.Matrix4().lookAt(worldPos, camera.position.clone(), new THREE.Vector3(0, 1, 0));
+          screenMesh.quaternion.setFromRotationMatrix(lookAtMat);
+          // plane geometry may need flipping so the textured face faces the camera
+          screenMesh.rotateY(Math.PI);
+
+          // scale the plane to roughly fit the anchor size
+          const desiredWidth = Math.max(size.x * 0.9, 0.18);
+          const desiredHeight = Math.max(size.y * 0.5, 0.10);
+          const baseW = 0.46; const baseH = 0.23;
+          screenMesh.scale.set(desiredWidth / baseW, desiredHeight / baseH, 1);
+        } catch (err) {
+          // ignore errors from badly-formed meshes
+        }
       }
 
       renderer.render(scene, camera);

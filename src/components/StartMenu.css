@@ -57,5 +57,8 @@
 .wheel-inner{width:56px;height:56px;border-radius:50%;border:6px solid rgba(255,255,255,0.22);box-sizing:border-box}
 
 /* in-car display (CSS2D object) */
-.car-display{font-family:Arial,Helvetica,sans-serif;border-radius:6px;padding:8px;pointer-events:none}
+.car-display{font-family:Arial,Helvetica,sans-serif;border-radius:6px;padding:8px;pointer-events:auto;background:linear-gradient(180deg,#080909,#0f1112);color:#dfffe8;min-width:180px;box-shadow:0 6px 18px rgba(0,0,0,0.6);display:block}
+.car-display .left-icons{display:flex;flex-direction:column;gap:6px;width:36px;padding-left:4px}
+.car-display .screen{background:#000;border-radius:4px;padding:6px;min-height:56px}
+.car-display .details-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9ff6b8;padding:6px;border-radius:4px;cursor:pointer;font-size:11px}
 
