@@ -103,6 +103,22 @@ const ThreeCanvas = () => {
         .label{color:#9fbf9a;font-size:12px}
         .value{font-size:14px;color:#dfffe8}
         .photo{width:120px;height:160px;background-size:cover;background-position:center;border-radius:6px;border:2px solid rgba(255,255,255,0.04)}
+
+        /* Projects folder and cards */
+        .folder{display:inline-flex;align-items:center;gap:12px;padding:8px 10px;background:linear-gradient(180deg,#071010,#0b1410);border-radius:8px;border:1px solid rgba(127,255,190,0.06);cursor:pointer;transition:transform .12s,box-shadow .12s}
+        .folder:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(0,0,0,0.5)}
+        .folder .icon{width:36px;height:26px;border-radius:4px;background:linear-gradient(180deg,#ffcc66,#ffb36b);display:flex;align-items:center;justify-content:center;font-weight:700}
+
+        .projects{position:absolute;left:18px;right:18px;top:70px;bottom:70px;background:linear-gradient(180deg,#050607,#0b0b0d);border-radius:10px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,0.6);display:none;flex-direction:column}
+        .projects.open{display:flex}
+        .projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;overflow:auto;padding:6px}
+        .card{display:block;background:linear-gradient(180deg,#071012,#091718);border-radius:8px;padding:10px;color:#dfffe8;text-decoration:none;border:1px solid rgba(255,255,255,0.03);transition:transform .12s,box-shadow .12s}
+        .card:hover{transform:translateY(-6px);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+        .card-img{width:100%;height:90px;background-size:cover;background-position:center;border-radius:6px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.02)}
+        .card-title{font-weight:700;font-size:13px;color:#9ff6b8;margin-bottom:4px}
+        .card-desc{font-size:12px;color:#9fbf9a}
+        .close-projects{background:transparent;border:1px solid rgba(255,255,255,0.03);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer;margin-left:auto}
+
         .actions{position:absolute;bottom:14px;right:18px}
         .btn{background:#120909;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-family:inherit}
       </style>
@@ -119,13 +135,90 @@ const ThreeCanvas = () => {
               <div class="label">Class</div><div class="value">${licenseData.classField}</div>
               <div class="label">College</div><div class="value">${licenseData.college}</div>
             </div>
+
+            <!-- Folder control -->
+            <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
+              <div class="folder" role="button" tabindex="0" aria-expanded="false" title="Open Projects">
+                <div class="icon">📁</div>
+                <div style="font-size:13px;color:#dfffe8">Projects</div>
+              </div>
+            </div>
+
           </div>
         </div>
+
+        <!-- Projects overlay (hidden by default) -->
+        <div class="projects" aria-hidden="true">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="font-weight:700;color:#9ff6b8">Projects</div>
+            <div style="font-size:12px;color:#9fbf9a">— Click a card to open</div>
+            <button class="close-projects" style="margin-left:auto">Close</button>
+          </div>
+          <div class="projects-grid" role="list"></div>
+        </div>
+
         <div class="actions">
           <button class="btn" onclick="window.print();">Print</button>
           <button class="btn" onclick="window.close();" style="margin-left:8px">Close</button>
         </div>
       </div>
+
+      <script>
+        (function(){
+          // sample project data (replace or extend as needed)
+          const projects = [
+            { title: 'Racing Demo', desc: '3D driving demo with procedural road and foliage', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%2308120a"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Racing Demo</text></svg>', url: '#' },
+            { title: 'Portfolio Site', desc: 'Interactive 3D portfolio built with Three.js', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%2301000b"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Portfolio</text></svg>', url: '#' },
+            { title: 'Vehicle UI', desc: 'HUD & in-car UI experiments', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: '#' }
+          ];
+
+          const folder = document.querySelector('.folder');
+          const projectsEl = document.querySelector('.projects');
+          const grid = document.querySelector('.projects-grid');
+
+          // render cards
+          projects.forEach((p) => {
+            const a = document.createElement('a');
+            a.className = 'card';
+            a.href = p.url || '#';
+            a.target = '_blank';
+            a.role = 'listitem';
+
+            const img = document.createElement('div');
+            img.className = 'card-img';
+            img.style.backgroundImage = 'url(' + p.img + ')';
+
+            const t = document.createElement('div');
+            t.className = 'card-title';
+            t.textContent = p.title;
+
+            const d = document.createElement('div');
+            d.className = 'card-desc';
+            d.textContent = p.desc;
+
+            a.appendChild(img);
+            a.appendChild(t);
+            a.appendChild(d);
+            grid.appendChild(a);
+          });
+
+          folder.addEventListener('click', function(e){
+            const open = !projectsEl.classList.contains('open');
+            projectsEl.classList.toggle('open', open);
+            folder.setAttribute('aria-expanded', open);
+            projectsEl.setAttribute('aria-hidden', !open);
+          });
+
+          // simple hover cursor effect
+          folder.addEventListener('mouseenter', function(){ document.body.style.cursor = 'pointer'; });
+          folder.addEventListener('mouseleave', function(){ document.body.style.cursor = 'default'; });
+
+          const closeBtn = document.querySelector('.close-projects');
+          if (closeBtn) closeBtn.addEventListener('click', function(){ projectsEl.classList.remove('open'); folder.setAttribute('aria-expanded', false); projectsEl.setAttribute('aria-hidden', true); });
+
+        })();
+      </script>
+
       </body></html>
     `;
     w.document.write(html);
