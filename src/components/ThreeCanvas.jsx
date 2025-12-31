@@ -92,6 +92,7 @@ const ThreeCanvas = () => {
     const html = `
       <html><head><title>Car Display — Driver Info</title>
       <meta name="viewport" content="width=device-width,initial-scale=1" />
+      <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
       <style>
         html,body{height:100%;margin:0}
         body{background:#060606;color:#b9f6ca;font-family:monospace,system-ui,Segoe UI,Roboto,Arial;margin:0;display:flex;align-items:center;justify-content:center}
@@ -117,6 +118,22 @@ const ThreeCanvas = () => {
         .card-img{width:100%;height:90px;background-size:cover;background-position:center;border-radius:6px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.02)}
         .card-title{font-weight:700;font-size:13px;color:#9ff6b8;margin-bottom:4px}
         .card-desc{font-size:12px;color:#9fbf9a}
+
+        /* Arcade / Games view styles */
+        .tab{background:transparent;border:1px solid rgba(255,255,255,0.04);color:#dfffe8;padding:6px 8px;border-radius:6px;cursor:pointer}
+        .tab.active{background:linear-gradient(180deg,#071012,#091718);box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+        .card.arcade{background:linear-gradient(180deg,#2b0f0f,#120606);border:2px solid #ff3b3b;color:#ffd166}
+        .card.arcade .card-title{font-family:'Press Start 2P',monospace;font-weight:700;color:#ffd166;font-size:12px}
+        .game-frame{position:absolute;left:18px;right:18px;top:70px;bottom:70px;background:#000;border-radius:8px;padding:6px;box-shadow:0 12px 40px rgba(0,0,0,0.8);display:flex;flex-direction:column}
+        .game-frame .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+        .game-frame .title{color:#ffd166;font-family:monospace;font-weight:700}
+        .game-frame .frame{flex:1;background:#000;border-radius:6px;overflow:hidden;border:4px solid rgba(255,255,255,0.02)}
+        .crt{position:relative;width:100%;height:100%;background:#000}
+        .crt::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);background-size:100% 3px;mix-blend-mode:overlay;opacity:0.6;pointer-events:none}
+        .close-frame{margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,0.04);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer}
+        .fullscreen-toggle{margin-left:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer}
+        .open-full{margin-left:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center} 
+
         .close-projects{background:transparent;border:1px solid rgba(255,255,255,0.03);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer;margin-left:auto}
 
         .actions{position:absolute;bottom:14px;right:18px}
@@ -167,50 +184,149 @@ const ThreeCanvas = () => {
         (function(){
           // sample project data (replace or extend as needed)
           const projects = [
-            { title: 'QuickShow', desc: 'End-to-end MERN stack movie ticket booking app with real-timeseat selection, secure payments, and automated email workflows.',img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%2308120a"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Racing Demo</text></svg>', url: 'https://show-time-blond.vercel.app/' },
-            { title: 'Uber-Clone', desc: 'Built with MongoDB, Express.js, React.js, and Node.js using RESTful API architecture.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%2301000b"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Portfolio</text></svg>', url: 'https://taxi11m.netlify.app/' },
-            { title: 'TASTY BURGER', desc: 'Developed Tasty Burgers, a responsive web application using HTML,CSS, React, Redux, and Bootstrap', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://tasty11-burger.netlify.app/' },
-            { title: 'Mojito', desc: 'Developed a responsive, single-page web application showcasing dynamic UI transitions and interactive elements using React and GSAP animations. ', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://mojito11m.netlify.app/' },
-            { title: 'Dog Runner', desc: 'Built a fast-paced Dog Runner Game using vanilla JavaScript with animations and collision detection.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://dog-runner.netlify.app/' },
-            { title: 'Solar System', desc: 'An interactive 3D visualization of the solar system built with Three.js, showcasing planets, orbits, and immersive space design.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://solar-system11m.netlify.app/' },
-            { title: 'LargerThanI', desc: 'A responsive NGO landing page built with React, Tailwind CSS, and modern UI practices.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://ngo11m.netlify.app/' },
-            { title: 'TODO', desc: ' A task management app using React, Redux, and Tailwind CSS for state handling and clean design.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://todo11m.netlify.app/' },
-            { title: 'TAZZA', desc: 'A stylish frontend project crafted with HTML, CSS, Bootstrap, and JavaScript, focusing on responsive layouts.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://tazza-web.netlify.app/' },
-            { title: 'Music Player(demo)', desc: 'A custom audio player with play/pause, track navigation, and sleek UI.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://music11m-player-demo.netlify.app/' },
-            { title: 'Quiz', desc: 'An interactive quiz application with dynamic question handling and scoring logic.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://quiz11m-app.netlify.app/' },
-            { title: 'Notes', desc: 'A simple notes manager for creating, editing, and storing text notes in the browser.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://notes11m-app.netlify.app/' },
-            { title: 'Weather', desc: 'A weather forecast app fetching live data via API, styled with HTML, CSS, and JavaScript.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://weather11m-app.netlify.app/' },
+            { title: 'QuickShow', desc: 'End-to-end MERN stack movie ticket booking app with real-timeseat selection, secure payments, and automated email workflows.',img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%2308120a"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Racing Demo</text></svg>', url: 'https://show-time-blond.vercel.app/' , category: 'web'},
+            { title: 'Uber-Clone', desc: 'Built with MongoDB, Express.js, React.js, and Node.js using RESTful API architecture.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%2301000b"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Portfolio</text></svg>', url: 'https://taxi11m.netlify.app/' , category: 'web'},
+            { title: 'TASTY BURGER', desc: 'Developed Tasty Burgers, a responsive web application using HTML,CSS, React, Redux, and Bootstrap', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://tasty11-burger.netlify.app/' , category: 'web'},
+            { title: 'Mojito', desc: 'Developed a responsive, single-page web application showcasing dynamic UI transitions and interactive elements using React and GSAP animations. ', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://mojito11m.netlify.app/' , category: 'web'},
+            { title: 'Dog Runner', desc: 'Built a fast-paced Dog Runner Game using vanilla JavaScript with animations and collision detection.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23a01010"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Dog Runner</text></svg>', url: 'https://dog-runner.netlify.app/', category: 'game' },
+            { title: 'Point and Shoot', desc: 'A fast-paced browser shooting game built with vanilla JavaScript.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23102614"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Point and Shoot</text></svg>', url: 'https://point-and-shoot11-game.netlify.app/', category: 'game' },
+            { title: 'Solar System', desc: 'An interactive 3D visualization of the solar system built with Three.js, showcasing planets, orbits, and immersive space design.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://solar-system11m.netlify.app/' , category: 'web'},
+            { title: 'LargerThanI', desc: 'A responsive NGO landing page built with React, Tailwind CSS, and modern UI practices.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://ngo11m.netlify.app/' , category: 'web'},
+            { title: 'TODO', desc: ' A task management app using React, Redux, and Tailwind CSS for state handling and clean design.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://todo11m.netlify.app/' , category: 'web'},
+            { title: 'TAZZA', desc: 'A stylish frontend project crafted with HTML, CSS, Bootstrap, and JavaScript, focusing on responsive layouts.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://tazza-web.netlify.app/' , category: 'web'},
+            { title: 'Music Player(demo)', desc: 'A custom audio player with play/pause, track navigation, and sleek UI.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://music11m-player-demo.netlify.app/' , category: 'web'},
+            { title: 'Quiz', desc: 'An interactive quiz application with dynamic question handling and scoring logic.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://quiz11m-app.netlify.app/' , category: 'web'},
+            { title: 'Notes', desc: 'A simple notes manager for creating, editing, and storing text notes in the browser.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://notes11m-app.netlify.app/' , category: 'web'},
+            { title: 'Weather', desc: 'A weather forecast app fetching live data via API, styled with HTML, CSS, and JavaScript.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://weather11m-app.netlify.app/' , category: 'web'},
           ];
 
           const folder = document.querySelector('.folder');
           const projectsEl = document.querySelector('.projects');
           const grid = document.querySelector('.projects-grid');
 
-          // render cards
-          projects.forEach((p) => {
-            const a = document.createElement('a');
-            a.className = 'card';
-            a.href = p.url || '#';
-            a.target = '_blank';
-            a.role = 'listitem';
+          // create tab bar
+          const tabs = document.createElement('div');
+          tabs.style.display = 'flex';
+          tabs.style.gap = '8px';
+          tabs.style.marginBottom = '8px';
+          const allBtn = document.createElement('button'); allBtn.textContent = 'All'; allBtn.className = 'tab active';
+          const gamesBtn = document.createElement('button'); gamesBtn.textContent = 'Games'; gamesBtn.className = 'tab';
+          tabs.appendChild(allBtn); tabs.appendChild(gamesBtn);
+          grid.parentNode.insertBefore(tabs, grid);
 
-            const img = document.createElement('div');
-            img.className = 'card-img';
-            img.style.backgroundImage = 'url(' + p.img + ')';
+          function renderList(filter){
+            grid.innerHTML = '';
+            const list = projects.filter(p => !filter || p.category === filter || filter === 'all');
+            list.forEach((p) => {
+              const a = document.createElement('a');
+              a.className = 'card' + (p.category === 'game' ? ' arcade' : '');
+              a.href = p.url || '#';
+              a.target = '_blank';
+              a.role = 'listitem';
 
-            const t = document.createElement('div');
-            t.className = 'card-title';
-            t.textContent = p.title;
+              const img = document.createElement('div');
+              img.className = 'card-img';
+              img.style.backgroundImage = 'url(' + p.img + ')';
 
-            const d = document.createElement('div');
-            d.className = 'card-desc';
-            d.textContent = p.desc;
+              const t = document.createElement('div');
+              t.className = 'card-title';
+              t.textContent = p.title;
 
-            a.appendChild(img);
-            a.appendChild(t);
-            a.appendChild(d);
-            grid.appendChild(a);
-          });
+              const d = document.createElement('div');
+              d.className = 'card-desc';
+              d.textContent = p.desc;
+
+              a.appendChild(img);
+              a.appendChild(t);
+              a.appendChild(d);
+
+              if (p.category === 'game'){
+                a.addEventListener('click', function(e){
+                  e.preventDefault();
+                  openInlineGame(p);
+                });
+              } else {
+                a.addEventListener('click', function(){ window.open(p.url, '_blank'); });
+              }
+
+              grid.appendChild(a);
+            });
+          }
+
+          // arcade CSS moved into the main <style> block above (no inline style injection here)
+
+          function openInlineGame(p){
+            // hide projects list
+            grid.style.display = 'none';
+            tabs.style.display = 'none';
+
+            // create frame
+            const frame = document.createElement('div'); frame.className = 'game-frame';
+            const toolbar = document.createElement('div'); toolbar.className = 'toolbar';
+            const title = document.createElement('div'); title.className = 'title'; title.textContent = p.title + ' — Play';
+            const openFull = document.createElement('a'); openFull.className = 'open-full'; openFull.textContent = 'Open full experience'; openFull.href = p.url; openFull.target = '_blank'; openFull.rel = 'noopener noreferrer'; openFull.title = 'Open full experience in a new tab';
+            const fsBtn = document.createElement('button'); fsBtn.className = 'fullscreen-toggle'; fsBtn.textContent = 'Fullscreen';
+            const closeBtn = document.createElement('button'); closeBtn.className = 'close-frame'; closeBtn.textContent = 'Exit Game';
+            toolbar.appendChild(title); toolbar.appendChild(openFull); toolbar.appendChild(fsBtn); toolbar.appendChild(closeBtn);
+
+            const frameHolder = document.createElement('div'); frameHolder.className = 'frame';
+            const crt = document.createElement('div'); crt.className = 'crt';
+
+            // iframe for hosted games
+            const iframe = document.createElement('iframe');
+            iframe.src = p.url;
+            iframe.style.border = '0';
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            // allow fullscreen and common permissions
+            iframe.setAttribute('allow', 'fullscreen; autoplay; picture-in-picture');
+            iframe.setAttribute('allowfullscreen', '');
+
+            crt.appendChild(iframe);
+            frameHolder.appendChild(crt);
+            frame.appendChild(toolbar);
+            frame.appendChild(frameHolder);
+
+            // insert into panel
+            const projectsContainer = document.querySelector('.projects');
+            projectsContainer.appendChild(frame);
+
+            // fullscreen toggle behavior with fallback to new tab
+            fsBtn.addEventListener('click', async function(){
+              if (!document.fullscreenElement){
+                try {
+                  if (frame.requestFullscreen) await frame.requestFullscreen();
+                  else if (frame.webkitRequestFullscreen) await frame.webkitRequestFullscreen();
+                  else if (frame.msRequestFullscreen) await frame.msRequestFullscreen();
+                } catch (err){
+                  // if fullscreen is blocked, open game in a new tab as fallback
+                  window.open(p.url, '_blank');
+                }
+              } else {
+                try { await document.exitFullscreen(); } catch (e) { /* ignore */ }
+              }
+            });
+
+            // update button label and keep listener reference so we can clean up
+            function updateFsBtn(){ fsBtn.textContent = document.fullscreenElement ? 'Exit Fullscreen' : 'Fullscreen'; }
+            const fsChangeHandler = updateFsBtn;
+            document.addEventListener('fullscreenchange', fsChangeHandler);
+            // initialize label
+            updateFsBtn();
+
+            // close handler (also exit fullscreen and remove listener)
+            closeBtn.addEventListener('click', function(){
+              if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+              document.removeEventListener('fullscreenchange', fsChangeHandler);
+              frame.remove(); grid.style.display = ''; tabs.style.display = ''; 
+            });
+          }
+
+          // initial render
+          renderList('all');
+
+          allBtn.addEventListener('click', function(){ allBtn.classList.add('active'); gamesBtn.classList.remove('active'); renderList('all'); });
+          gamesBtn.addEventListener('click', function(){ gamesBtn.classList.add('active'); allBtn.classList.remove('active'); renderList('game'); });
 
           folder.addEventListener('click', function(e){
             const open = !projectsEl.classList.contains('open');
