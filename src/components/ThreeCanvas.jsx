@@ -113,6 +113,17 @@ const ThreeCanvas = () => {
         .projects{position:absolute;left:18px;right:18px;top:70px;bottom:70px;background:linear-gradient(180deg,#050607,#0b0b0d);border-radius:10px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,0.6);display:none;flex-direction:column}
         .projects.open{display:flex}
         .projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;overflow:auto;padding:6px}
+        /* Experience section (larger, section-style cards) */
+        .experience{position:absolute;left:18px;right:18px;top:70px;bottom:70px;background:linear-gradient(180deg,#050607,#0b0b0d);border-radius:10px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.6);display:none;flex-direction:column}
+        .experience.open{display:flex}
+        .experience-grid{display:flex;flex-direction:column;gap:12px;overflow:auto;padding:6px}
+        .exp-card{display:flex;gap:12px;background:linear-gradient(180deg,#081219,#0b1a1a);border-radius:10px;padding:14px;color:#dfffe8;border:1px solid rgba(255,255,255,0.03)}
+        .exp-img{width:220px;height:120px;background-size:cover;background-position:center;border-radius:8px;border:1px solid rgba(255,255,255,0.02);flex-shrink:0}
+        .exp-body{flex:1}
+        .exp-title{font-weight:800;font-size:15px;color:#9ff6b8;margin-bottom:6px}
+        .exp-role{font-size:13px;color:#dfffe8;margin-bottom:4px}
+        .exp-period{font-size:12px;color:#9fbf9a;margin-bottom:8px}
+        .exp-desc{font-size:13px;color:#cfefd4}
         .card{display:block;background:linear-gradient(180deg,#071012,#091718);border-radius:8px;padding:10px;color:#dfffe8;text-decoration:none;border:1px solid rgba(255,255,255,0.03);transition:transform .12s,box-shadow .12s}
         .card:hover{transform:translateY(-6px);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
         .card-img{width:100%;height:90px;background-size:cover;background-position:center;border-radius:6px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.02)}
@@ -155,10 +166,14 @@ const ThreeCanvas = () => {
 
             <!-- Folder control -->
             <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
-              <div class="folder" role="button" tabindex="0" aria-expanded="false" title="Open Projects">
-                <div class="icon">📁</div>
-                <div style="font-size:13px;color:#dfffe8">Projects</div>
-              </div>
+                <div class="folder" role="button" tabindex="0" aria-expanded="false" data-target="projects" title="Open Projects">
+                  <div class="icon">📁</div>
+                  <div style="font-size:13px;color:#dfffe8">Projects</div>
+                </div>
+                <div class="folder" role="button" tabindex="0" aria-expanded="false" data-target="experience" title="Open Experience">
+                  <div class="icon">📂</div>
+                  <div style="font-size:13px;color:#dfffe8">Experience</div>
+                </div>
             </div>
 
           </div>
@@ -174,6 +189,16 @@ const ThreeCanvas = () => {
           <div class="projects-grid" role="list"></div>
         </div>
 
+        <!-- Experience overlay (hidden by default). larger section-style cards for internships -->
+        <div class="experience" aria-hidden="true">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="font-weight:700;color:#9ff6b8">Experience</div>
+            <div style="font-size:12px;color:#9fbf9a">— Internship & work history</div>
+            <button class="close-experience" style="margin-left:auto">Close</button>
+          </div>
+          <div class="experience-grid" role="list"></div>
+        </div>
+
         <div class="actions">
           <button class="btn" onclick="window.print();">Print</button>
           <button class="btn" onclick="window.close();" style="margin-left:8px">Close</button>
@@ -182,6 +207,7 @@ const ThreeCanvas = () => {
 
       <script>
         (function(){
+          try {
           // sample project data (replace or extend as needed)
           const projects = [
             { title: 'QuickShow', desc: 'End-to-end MERN stack movie ticket booking app with real-timeseat selection, secure payments, and automated email workflows.',img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%2308120a"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Racing Demo</text></svg>', url: 'https://show-time-blond.vercel.app/' , category: 'web'},
@@ -200,11 +226,13 @@ const ThreeCanvas = () => {
             { title: 'Weather', desc: 'A weather forecast app fetching live data via API, styled with HTML, CSS, and JavaScript.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Vehicle UI</text></svg>', url: 'https://weather11m-app.netlify.app/' , category: 'web'},
           ];
 
-          const folder = document.querySelector('.folder');
+          const folders = Array.from(document.querySelectorAll('.folder'));
           const projectsEl = document.querySelector('.projects');
-          const grid = document.querySelector('.projects-grid');
+          const projectsGrid = document.querySelector('.projects-grid');
+          const experienceEl = document.querySelector('.experience');
+          const experienceGrid = document.querySelector('.experience-grid');
 
-          // create tab bar
+          // create tab bar (projects only)
           const tabs = document.createElement('div');
           tabs.style.display = 'flex';
           tabs.style.gap = '8px';
@@ -212,10 +240,10 @@ const ThreeCanvas = () => {
           const allBtn = document.createElement('button'); allBtn.textContent = 'All'; allBtn.className = 'tab active';
           const gamesBtn = document.createElement('button'); gamesBtn.textContent = 'Games'; gamesBtn.className = 'tab';
           tabs.appendChild(allBtn); tabs.appendChild(gamesBtn);
-          grid.parentNode.insertBefore(tabs, grid);
+          projectsGrid.parentNode.insertBefore(tabs, projectsGrid);
 
           function renderList(filter){
-            grid.innerHTML = '';
+            projectsGrid.innerHTML = '';
             const list = projects.filter(p => !filter || p.category === filter || filter === 'all');
             list.forEach((p) => {
               const a = document.createElement('a');
@@ -249,7 +277,35 @@ const ThreeCanvas = () => {
                 a.addEventListener('click', function(){ window.open(p.url, '_blank'); });
               }
 
-              grid.appendChild(a);
+              projectsGrid.appendChild(a);
+            });
+          }
+
+          // Experience data (sample — replace with your internship entries)
+          const experiences = [
+            { title: 'MERN Stack development Intern -> Uptoskills', role: 'Fullstack Developer', period: '1st of October 2025 - 1st of January 2026', desc: 'Contributed to UI components, performance optimizations and accessibility fixes for the company product.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Uptoskills</text></svg>', url: '' },
+          ];
+
+          function renderExperience(){
+            experienceGrid.innerHTML = '';
+            experiences.forEach((e) => {
+              const card = document.createElement('div'); card.className = 'exp-card';
+
+              const img = document.createElement('div'); img.className = 'exp-img'; img.style.backgroundImage = 'url(' + e.img + ')';
+              const body = document.createElement('div'); body.className = 'exp-body';
+              const title = document.createElement('div'); title.className = 'exp-title'; title.textContent = e.title;
+              const role = document.createElement('div'); role.className = 'exp-role'; role.textContent = e.role;
+              const period = document.createElement('div'); period.className = 'exp-period'; period.textContent = e.period;
+              const desc = document.createElement('div'); desc.className = 'exp-desc'; desc.textContent = e.desc;
+
+              body.appendChild(title); body.appendChild(role); body.appendChild(period); body.appendChild(desc);
+
+              if (e.url){
+                const link = document.createElement('a'); link.className = 'open-full'; link.textContent = 'View'; link.href = e.url; link.target = '_blank'; link.style.marginTop = '8px'; body.appendChild(link);
+              }
+
+              card.appendChild(img); card.appendChild(body);
+              experienceGrid.appendChild(card);
             });
           }
 
@@ -257,7 +313,7 @@ const ThreeCanvas = () => {
 
           function openInlineGame(p){
             // hide projects list
-            grid.style.display = 'none';
+            projectsGrid.style.display = 'none';
             tabs.style.display = 'none';
 
             // create frame
@@ -318,30 +374,50 @@ const ThreeCanvas = () => {
             closeBtn.addEventListener('click', function(){
               if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
               document.removeEventListener('fullscreenchange', fsChangeHandler);
-              frame.remove(); grid.style.display = ''; tabs.style.display = ''; 
+              frame.remove(); projectsGrid.style.display = ''; tabs.style.display = ''; 
             });
           }
 
           // initial render
           renderList('all');
+          renderExperience();
 
           allBtn.addEventListener('click', function(){ allBtn.classList.add('active'); gamesBtn.classList.remove('active'); renderList('all'); });
           gamesBtn.addEventListener('click', function(){ gamesBtn.classList.add('active'); allBtn.classList.remove('active'); renderList('game'); });
 
-          folder.addEventListener('click', function(e){
-            const open = !projectsEl.classList.contains('open');
-            projectsEl.classList.toggle('open', open);
-            folder.setAttribute('aria-expanded', open);
-            projectsEl.setAttribute('aria-hidden', !open);
+          // folder click handlers (projects + experience)
+          folders.forEach(function(f){
+            f.addEventListener('click', function(){
+              const target = f.getAttribute('data-target');
+              if (target === 'projects'){
+                const open = !projectsEl.classList.contains('open');
+                projectsEl.classList.toggle('open', open);
+                projectsEl.setAttribute('aria-hidden', !open);
+                // close other
+                experienceEl.classList.remove('open');
+                document.querySelectorAll('.folder[data-target="experience"]').forEach(x=>x.setAttribute('aria-expanded', false));
+                f.setAttribute('aria-expanded', open);
+              } else if (target === 'experience'){
+                const open = !experienceEl.classList.contains('open');
+                experienceEl.classList.toggle('open', open);
+                experienceEl.setAttribute('aria-hidden', !open);
+                // close other
+                projectsEl.classList.remove('open');
+                document.querySelectorAll('.folder[data-target="projects"]').forEach(x=>x.setAttribute('aria-expanded', false));
+                f.setAttribute('aria-expanded', open);
+              }
+            });
+            f.addEventListener('mouseenter', function(){ document.body.style.cursor = 'pointer'; });
+            f.addEventListener('mouseleave', function(){ document.body.style.cursor = 'default'; });
           });
 
-          // simple hover cursor effect
-          folder.addEventListener('mouseenter', function(){ document.body.style.cursor = 'pointer'; });
-          folder.addEventListener('mouseleave', function(){ document.body.style.cursor = 'default'; });
+          const closeProjectsBtn = document.querySelector('.close-projects');
+          if (closeProjectsBtn) closeProjectsBtn.addEventListener('click', function(){ projectsEl.classList.remove('open'); document.querySelectorAll('.folder[data-target="projects"]').forEach(x=>x.setAttribute('aria-expanded', false)); projectsEl.setAttribute('aria-hidden', true); });
 
-          const closeBtn = document.querySelector('.close-projects');
-          if (closeBtn) closeBtn.addEventListener('click', function(){ projectsEl.classList.remove('open'); folder.setAttribute('aria-expanded', false); projectsEl.setAttribute('aria-hidden', true); });
+          const closeExperienceBtn = document.querySelector('.close-experience');
+          if (closeExperienceBtn) closeExperienceBtn.addEventListener('click', function(){ experienceEl.classList.remove('open'); document.querySelectorAll('.folder[data-target="experience"]').forEach(x=>x.setAttribute('aria-expanded', false)); experienceEl.setAttribute('aria-hidden', true); });
 
+        } catch (e) { var dbg = document.createElement('pre'); dbg.style.color='salmon'; dbg.style.background='#0b0b0b'; dbg.style.padding='12px'; dbg.style.borderRadius='8px'; dbg.style.maxHeight='200px'; dbg.style.overflow='auto'; dbg.textContent = (e && e.stack) ? e.stack : (e && e.message) ? e.message : String(e); document.body.appendChild(dbg); }
         })();
       </script>
 
