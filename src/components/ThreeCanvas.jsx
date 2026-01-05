@@ -283,7 +283,7 @@ const ThreeCanvas = () => {
 
           // Experience data (sample — replace with your internship entries)
           const experiences = [
-            { title: 'MERN Stack development Intern -> Uptoskills', role: 'Fullstack Developer', period: '1st of October 2025 - 1st of January 2026', desc: 'Contributed to UI components, performance optimizations and accessibility fixes for the company product.', img: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="%23020b05"/><text x="50%" y="50%" fill="%23fff" font-size="18" text-anchor="middle" dominant-baseline="middle">Uptoskills</text></svg>', url: '' },
+            { title: 'MERN Stack development Intern -> Uptoskills', role: 'Fullstack Developer', period: '1st of October 2025 - 1st of January 2026', desc: 'Contributed to UI components, performance optimizations and accessibility fixes for the company product.', img: '/assets/logos/uptoskills_logo.jpg', url: '' },
           ];
 
           function renderExperience(){
