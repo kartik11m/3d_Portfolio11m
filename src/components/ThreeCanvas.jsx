@@ -116,14 +116,20 @@ const ThreeCanvas = () => {
         /* Experience section (larger, section-style cards) */
         .experience{position:absolute;left:18px;right:18px;top:70px;bottom:70px;background:linear-gradient(180deg,#050607,#0b0b0d);border-radius:10px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,0.6);display:none;flex-direction:column}
         .experience.open{display:flex}
-        .experience-grid{display:flex;flex-direction:column;gap:12px;overflow:auto;padding:6px}
-        .exp-card{display:flex;gap:12px;background:linear-gradient(180deg,#081219,#0b1a1a);border-radius:10px;padding:14px;color:#dfffe8;border:1px solid rgba(255,255,255,0.03)}
-        .exp-img{width:220px;height:120px;background-size:cover;background-position:center;border-radius:8px;border:1px solid rgba(255,255,255,0.02);flex-shrink:0}
+        .experience-grid{display:flex;flex-direction:column;gap:20px;overflow:auto;padding:6px}
+        .exp-card{display:flex;flex-direction:column;gap:16px;background:linear-gradient(180deg,#081219,#0b1a1a);border-radius:12px;padding:20px;color:#dfffe8;border:1px solid rgba(255,255,255,0.08);transition:transform 0.2s, box-shadow 0.2s}
+        .exp-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.4)}
+        .exp-header{display:flex;gap:16px}
+        .exp-img{width:180px;height:140px;background-size:cover;background-position:center;border-radius:8px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0}
+        .exp-info{flex:1}
         .exp-body{flex:1}
-        .exp-title{font-weight:800;font-size:15px;color:#9ff6b8;margin-bottom:6px}
-        .exp-role{font-size:13px;color:#dfffe8;margin-bottom:4px}
-        .exp-period{font-size:12px;color:#9fbf9a;margin-bottom:8px}
-        .exp-desc{font-size:13px;color:#cfefd4}
+        .exp-title{font-weight:800;font-size:16px;color:#9ff6b8;margin-bottom:8px}
+        .exp-role{font-size:14px;color:#dfffe8;margin-bottom:4px;font-weight:600}
+        .exp-period{font-size:12px;color:#9fbf9a;margin-bottom:12px;font-style:italic}
+        .exp-desc{font-size:13px;color:#cfefd4;line-height:1.8;margin:0}
+        .exp-desc ul{margin:12px 0;padding-left:20px;color:#cfefd4}
+        .exp-desc li{margin:10px 0;text-align:justify}
+        .exp-card .open-full{margin-top:12px;align-self:flex-start}
         .card{display:block;background:linear-gradient(180deg,#071012,#091718);border-radius:8px;padding:10px;color:#dfffe8;text-decoration:none;border:1px solid rgba(255,255,255,0.03);transition:transform .12s,box-shadow .12s}
         .card:hover{transform:translateY(-6px);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
         .card-img{width:100%;height:90px;background-size:cover;background-position:center;border-radius:6px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.02)}
@@ -146,6 +152,7 @@ const ThreeCanvas = () => {
         .open-full{margin-left:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center} 
 
         .close-projects{background:transparent;border:1px solid rgba(255,255,255,0.03);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer;margin-left:auto}
+        .close-experience{background:transparent;border:1px solid rgba(255,255,255,0.03);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer;margin-left:auto}
 
         .actions{position:absolute;bottom:14px;right:18px}
         .btn{background:#120909;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-family:inherit}
@@ -283,28 +290,52 @@ const ThreeCanvas = () => {
 
           // Experience data (sample — replace with your internship entries)
           const experiences = [
-            { title: 'MERN Stack development Intern -> Uptoskills', role: 'Fullstack Developer', period: '1st of October 2025 - 1st of January 2026', desc: 'Contributed to UI components, performance optimizations and accessibility fixes for the company product.', img: '/assets/logos/uptoskills_logo.jpg', url: '' },
-          ];
+            { title: 'MERN Stack development Intern -> Uptoskills', role: 'Fullstack Developer', period: '1st of October 2025 - 1st of January 2026', desc: 'Key Contributions:- Designed the HRMS portal prototype using Figma, ensuring a user friendly and modern interface. Promoted to Sub Team Leader; initiated development of the portal using the PERN stack, focusing on frontend implementation. Led backend development and contributed to successful completion of the HRMS project. Achievements:- Awarded Intern of the Month (October) for outstanding performance. Promoted to Sub Team Leader (November): Managed project sheets, reviewed code, and facilitated meetings in the absence of the Team Lead. Promoted to Team Lead (December): Directed a team of 85 interns, handled onboarding, organized and led meetings, prepared daily summaries for senior authorities, reviewed tasks and code, and assigned responsibilities effectively.', img: '/assets/logos/uptoskills_logo.jpg', url: '' },
+                          ];
 
           function renderExperience(){
             experienceGrid.innerHTML = '';
             experiences.forEach((e) => {
               const card = document.createElement('div'); card.className = 'exp-card';
 
+              // Header with image and info
+              const header = document.createElement('div'); header.className = 'exp-header';
               const img = document.createElement('div'); img.className = 'exp-img'; img.style.backgroundImage = 'url(' + e.img + ')';
-              const body = document.createElement('div'); body.className = 'exp-body';
+              const info = document.createElement('div'); info.className = 'exp-info';
+              
               const title = document.createElement('div'); title.className = 'exp-title'; title.textContent = e.title;
               const role = document.createElement('div'); role.className = 'exp-role'; role.textContent = e.role;
               const period = document.createElement('div'); period.className = 'exp-period'; period.textContent = e.period;
-              const desc = document.createElement('div'); desc.className = 'exp-desc'; desc.textContent = e.desc;
+              
+              info.appendChild(title); info.appendChild(role); info.appendChild(period);
+              header.appendChild(img); header.appendChild(info);
+              card.appendChild(header);
 
-              body.appendChild(title); body.appendChild(role); body.appendChild(period); body.appendChild(desc);
+              // Body with description as bullet points
+              const body = document.createElement('div'); body.className = 'exp-body';
+              const desc = document.createElement('div'); desc.className = 'exp-desc';
+              
+              // Parse description into bullet points (split by specific keywords)
+              const points = e.desc.split(/Achievements:[-]?/);
+              let descHTML = '<ul>';
+              points.forEach((point, idx) => {
+                const items = point.split(/(?:[-•]\s+)/).filter(s => s.trim());
+                items.forEach(item => {
+                  const cleaned = item.trim();
+                  if (cleaned && cleaned.length > 2) {
+                    descHTML += '<li>' + cleaned + '</li>';
+                  }
+                });
+              });
+              descHTML += '</ul>';
+              desc.innerHTML = descHTML;
+              body.appendChild(desc);
+              card.appendChild(body);
 
               if (e.url){
-                const link = document.createElement('a'); link.className = 'open-full'; link.textContent = 'View'; link.href = e.url; link.target = '_blank'; link.style.marginTop = '8px'; body.appendChild(link);
+                const link = document.createElement('a'); link.className = 'open-full'; link.textContent = 'View'; link.href = e.url; link.target = '_blank'; body.appendChild(link);
               }
 
-              card.appendChild(img); card.appendChild(body);
               experienceGrid.appendChild(card);
             });
           }
@@ -1237,10 +1268,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
                 </div>
 
                 <div className="license-actions">
-                  {isEditingLicense ? <button className="btn primary" onClick={()=>{handleSaveLicense()}}>Save</button> : <button className="btn"
-                  //  onClick={()=>setIsEditingLicense(true)}
-                   >
-                    Edit</button>}
+                  {isEditingLicense ? <button className="btn primary" onClick={()=>{handleSaveLicense()}}>Save</button> : <button className="btn" onClick={()=>setIsEditingLicense(true)}>Edit</button>}
                   <button className="btn" onClick={handlePrintLicense}>Print / Save</button>
                   <button className="btn" onClick={() => { navigator.clipboard?.writeText(JSON.stringify(licenseData)); alert('License data copied to clipboard'); }}>Copy Data</button>
                   <button className="btn" onClick={() => { setShowLicense(false); setIsEditingLicense(false); }}>Close</button>
