@@ -592,10 +592,12 @@ const ThreeCanvas = () => {
         normalMap: grassNormal,
         roughnessMap: grassRoughness,
         aoMap: grassAO,
-        transparent: true,
+        // Use alphaTest (discard fragments) and write depth so other
+        // transparent objects (like tree leaves) depth-test correctly.
+        transparent: false,
         alphaTest: 0.5,
         side: THREE.DoubleSide,
-        depthWrite: false,
+        depthWrite: true,
         roughness: 0.9,
         metalness: 0.0,
         shadowSide: THREE.FrontSide
@@ -628,7 +630,11 @@ const ThreeCanvas = () => {
 
       const dummy = new THREE.Object3D();
       for (let i = 0; i < bladesPerSide; i++) {
-        const x = -10 + (Math.random() - 0.5) * 8;
+        // sample left-side x and ensure it stays left of the road
+        let x = -10 + (Math.random() - 0.5) * 40;
+        while (x > -4.6) { // push until it's safely left of the road
+          x = -10 + (Math.random() - 0.5) * 40;
+        }
         const z = (Math.random() - 0.5) * SEG_LEN;
         dummy.position.set(x, -0.8, z);
         dummy.rotation.y = Math.random() * Math.PI;
@@ -638,7 +644,11 @@ const ThreeCanvas = () => {
         grassLeft.setMatrixAt(i, dummy.matrix);
       }
       for (let i = 0; i < bladesPerSide; i++) {
-        const x = 10 + (Math.random() - 0.5) * 8;
+        // sample right-side x and ensure it stays right of the road
+        let x = 10 + (Math.random() - 0.5) * 40;
+        while (x < 4.6) { // push until it's safely right of the road
+          x = 10 + (Math.random() - 0.5) * 40;
+        }
         const z = (Math.random() - 0.5) * SEG_LEN;
         dummy.position.set(x, -0.8, z);
         dummy.rotation.y = Math.random() * Math.PI;
@@ -651,6 +661,88 @@ const ThreeCanvas = () => {
       grassRight.instanceMatrix.needsUpdate = true;
 
       group.add(grassLeft, grassRight);
+
+      // Create wind shader material for grass model
+      const windShaderMaterial = new THREE.MeshStandardMaterial({
+        // Use the grass textures so model clones correctly alpha-test
+        map: grassColor,
+        normalMap: grassNormal,
+        roughnessMap: grassRoughness,
+        aoMap: grassAO,
+        color: '#8fbc8f',
+        roughness: 0.6,
+        metalness: 0.0,
+        // Ensure depth is written for correct compositing with leaves
+        transparent: false,
+        alphaTest: 0.5,
+        depthWrite: true,
+        side: THREE.DoubleSide,
+        shadowSide: THREE.FrontSide
+      });
+
+      windShaderMaterial.onBeforeCompile = (shader) => {
+        shader.uniforms.uTime = { value: 0 };
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <common>',
+          `#include <common>
+           uniform float uTime;`
+        );
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>
+           float wind = sin(uTime + position.z * 2.0 + position.x * 0.5) * 0.12;
+           transformed.x += wind * (transformed.y * 0.7);
+           transformed.z += sin(uTime * 0.7 + position.x) * 0.06 * transformed.y;`
+        );
+        windShaderMaterial.userData.shader = shader;
+      };
+
+      // Load grass model with wind animation
+      const grassModelLoader = new GLTFLoader();
+      
+      // Handle GLTF extensions
+      grassModelLoader.register((parser) => {
+        return {
+          name: 'KHR_materials_pbrSpecularGlossiness',
+          beforeRoot: async () => {}
+        };
+      });
+      
+      grassModelLoader.load('/models/lump_grass.glb', (gltf) => {
+        const grassModel = gltf.scene.children[0] || gltf.scene;
+        grassModel.scale.set(0.001, 0.001, 0.001);
+        grassModel.traverse((obj) => {
+          if (obj.isMesh) {
+            obj.castShadow = true;
+            obj.receiveShadow = true;
+          }
+        });
+
+        // Add grass patches on the sides
+        for (let i = -HALF; i < HALF; i += 25) {
+          for (let j = -9; j <= 9; j += 6) {
+            // ensure patches don't appear on the road (road half-width is 3)
+            const x = j * 0.8;
+            if (Math.abs(x) <= 3.2) continue; // skip positions too close to center
+
+            if (Math.random() > 0.55) {
+              const grass = grassModel.clone(true);
+              grass.position.set(x, -1, i);
+              // grass.rotation.y = Math.random() * Math.PI * 2;
+              grass.frustumCulled = false;
+              grass.traverse((obj) => {
+                if (obj.isMesh) {
+                  // Apply wind shader to each mesh
+                  const matClone = windShaderMaterial.clone();
+                  obj.material = matClone;
+                  obj.frustumCulled = false;
+                }
+              });
+              group.add(grass);
+            }
+          }
+        }
+      });
 
             // Road stripes
       const stripeMaterial = new THREE.MeshStandardMaterial({ color: '#ffffff' });
