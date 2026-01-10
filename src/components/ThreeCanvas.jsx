@@ -697,6 +697,31 @@ const ThreeCanvas = () => {
         windShaderMaterial.userData.shader = shader;
       };
 
+      // Helper to attach the same onBeforeCompile behavior to clones
+      const attachWindShader = (material, strength = 0.12) => {
+        material.onBeforeCompile = (shader) => {
+          shader.uniforms.uTime = { value: 0 };
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <common>',
+            `#include <common>
+             uniform float uTime;`
+          );
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            `#include <begin_vertex>
+             float wind = sin(uTime + position.z * 2.0 + position.x * 0.5) * ${strength.toFixed(3)};
+             transformed.x += wind * (transformed.y * 0.7);
+             transformed.z += sin(uTime * 0.7 + position.x) * ${(
+              (strength * 0.5)
+            ).toFixed(3)} * transformed.y;`
+          );
+          material.userData.shader = shader;
+        };
+      };
+
+      // ensure the original material has the handler as well
+      attachWindShader(windShaderMaterial);
+
       // Load grass model with wind animation
       const grassModelLoader = new GLTFLoader();
       
@@ -734,6 +759,8 @@ const ThreeCanvas = () => {
                 if (obj.isMesh) {
                   // Apply wind shader to each mesh
                   const matClone = windShaderMaterial.clone();
+                  attachWindShader(matClone, 0.18); // slightly stronger wind for model-scale
+                  matClone.needsUpdate = true; // force recompile so uTime exists immediately
                   obj.material = matClone;
                   obj.frustumCulled = false;
                 }
