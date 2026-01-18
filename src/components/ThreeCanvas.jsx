@@ -1228,7 +1228,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
           // Reset if too far horizontally or back
           if (Math.abs(positions[i]) > 120 || positions[i + 2] < -120) {
             positions[i] = (Math.random() - 0.5) * 200;
-            positions[i + 1] = 45 + Math.random() * 10;
+            positions[i + 1] = 35 + Math.random() * 10;
             positions[i + 2] = (Math.random() - 0.5) * 200;
           }
         }
