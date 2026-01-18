@@ -1221,7 +1221,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
           if (positions[i + 1] < -10) {
             // Respawn at top with random distribution
             positions[i] = (Math.random() - 0.5) * 200;
-            positions[i + 1] = 45 + Math.random() * 10;  // Respawn at top (45-55)
+            positions[i + 1] = 35 + Math.random() * 10;  // Respawn at top (45-55)
             positions[i + 2] = (Math.random() - 0.5) * 200;
           }
 
