@@ -1166,11 +1166,77 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
       });
     };
 
+    // Create leaf particle system
+    const createLeafParticles = () => {
+      const leafGeometry = new THREE.BufferGeometry();
+      const leafCount = 4000;  // Increased from 200
+      const positions = [];
+
+      for (let i = 0; i < leafCount; i++) {
+        positions.push(
+          (Math.random() - 0.5) * 200,  // x: spread across entire width
+          Math.random() * 50,            // y: spread from 0-50 for varied fall times
+          (Math.random() - 0.5) * 200   // z: spread across entire depth
+        );
+      }
+
+      leafGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+
+      const leafMaterial = new THREE.PointsMaterial({
+        color: 0x228B22,
+        size: 0.2,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.6,
+      });
+
+      const leafParticles = new THREE.Points(leafGeometry, leafMaterial);
+      scene.add(leafParticles);
+      return leafParticles;
+    };
+
+    const leafParticles = createLeafParticles();
+
     const clock = new THREE.Clock();
 
     const animate = () => {
       requestAnimationFrame(animate);
       const time = clock.getElapsedTime();
+
+      // Update leaf particles with wind effect
+      if (leafParticles) {
+        const positions = leafParticles.geometry.attributes.position.array;
+        const windStrength = Math.sin(time * 0.5) * 0.4 + 0.3;
+        const carSpeed = speedRef.current;
+
+        for (let i = 0; i < positions.length; i += 3) {
+          const leafIndex = i / 3;
+
+          // Continuous wind + car speed
+          positions[i] += windStrength * 0.4 + carSpeed * 0.15;              // x: wind + car motion
+          positions[i + 1] -= 0.06;                                         // y: slower falling (was 0.12)
+          positions[i + 2] += Math.sin(time * 0.3 + leafIndex) * 0.15;     // z: swaying
+
+          // Reset leaves individually as they fall (not all at once)
+          if (positions[i + 1] < -10) {
+            // Respawn at top with random distribution
+            positions[i] = (Math.random() - 0.5) * 200;
+            positions[i + 1] = 45 + Math.random() * 10;  // Respawn at top (45-55)
+            positions[i + 2] = (Math.random() - 0.5) * 200;
+          }
+
+          // Reset if too far horizontally or back
+          if (Math.abs(positions[i]) > 120 || positions[i + 2] < -120) {
+            positions[i] = (Math.random() - 0.5) * 200;
+            positions[i + 1] = 45 + Math.random() * 10;
+            positions[i + 2] = (Math.random() - 0.5) * 200;
+          }
+        }
+        leafParticles.geometry.attributes.position.needsUpdate = true;
+
+        // Always keep high opacity so leaves are always visible
+        leafParticles.material.opacity = 0.7;
+      }
 
       // Grass wind
       scene.traverse((obj) => {
@@ -1326,7 +1392,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
         visible={!started}
         onStart={() => setStarted(true)}
         onShowLicense={() => setShowLicense(true)}
-        onShowResume={() => { window.open('/resume.pdf', '_blank'); setShowResume(true); }}
+        onShowResume={() => { window.open('/KM_Full.pdf', '_blank'); setShowResume(true); }}
       />
 
       {started && (
