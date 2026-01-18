@@ -1213,7 +1213,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
         } else {
           // third-person follow()
           const carPos = carModel.getWorldPosition(new THREE.Vector3());
-          const camOffset = new THREE.Vector3(0, 3.5, 6);
+          const camOffset = new THREE.Vector3(0, 2.1, 6);
           const targetCamPos = carPos.clone().add(camOffset);
           camera.position.lerp(targetCamPos, 0.1);
           camera.lookAt(carPos);
