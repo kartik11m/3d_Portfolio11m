@@ -521,10 +521,10 @@ const ThreeCanvas = () => {
 
     const textureLoader = new THREE.TextureLoader();
 
-    const terrainColor = textureLoader.load('/textures/Ground/Ground037_4K-JPG_Color.jpg');
-    const terrainNormal = textureLoader.load('/textures/Ground/Ground037_4K-JPG_NormalGL.jpg');
-    const terrainRoughness = textureLoader.load('/textures/Ground/Ground037_4K-JPG_Roughness.jpg');
-    const terrainAO = textureLoader.load('/textures/Ground/Ground037_4K-JPG_Ambient Occlusion.jpg');
+    const terrainColor = textureLoader.load('/textures/Grass/Grass001_4K-JPG_Color.jpg');
+    const terrainNormal = textureLoader.load('/textures/Grass/Grass001_4K-JPG_NormalGL.jpg');
+    const terrainRoughness = textureLoader.load('/textures/Grass/Grass001_4K-JPG_Roughness.jpg');
+    const terrainAO = textureLoader.load('/textures/Grass/Grass001_4K-JPG_AmbientOcclusion.jpg');
 
     [terrainColor, terrainNormal, terrainRoughness, terrainAO].forEach((tex) => {
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
