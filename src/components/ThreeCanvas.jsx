@@ -850,6 +850,31 @@ treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
       const whiteFlowerLoader = new GLTFLoader();
       const sunflowerLoader = new GLTFLoader();
       
+      // Create wind shader for flowers
+      const flowerWindMaterial = new THREE.MeshStandardMaterial({
+        roughness: 0.8,
+        metalness: 0.0
+      });
+
+      const attachFlowerWindShader = (material) => {
+        material.onBeforeCompile = (shader) => {
+          shader.uniforms.uTime = { value: 0 };
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <common>',
+            `#include <common>
+             uniform float uTime;`
+          );
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            `#include <begin_vertex>
+             float wind = sin(uTime + position.z * 1.5 + position.x * 0.3) * 0.08;
+             transformed.x += wind * (transformed.y * 0.5);
+             transformed.z += sin(uTime * 0.5 + position.x) * 0.04 * transformed.y;`
+          );
+          material.userData.shader = shader;
+        };
+      };
+      
       whiteFlowerLoader.load('/models/white_flower.glb', (gltf) => {
         const whiteFlowerModel = gltf.scene.children[0] || gltf.scene;
         whiteFlowerModel.scale.set(0.02, 0.02, 0.02);
@@ -881,6 +906,14 @@ treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
                     if (obj.isMesh) {
                       obj.castShadow = true;
                       obj.receiveShadow = true;
+                      
+                      // Apply wind shader to flower materials
+                      const matClone = flowerWindMaterial.clone();
+                      matClone.map = obj.material.map;
+                      matClone.color.copy(obj.material.color);
+                      attachFlowerWindShader(matClone);
+                      matClone.needsUpdate = true;
+                      obj.material = matClone;
                     }
                   });
                   
