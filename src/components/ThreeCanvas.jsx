@@ -844,6 +844,45 @@ treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
 
     group.add(treeGroup);
     group.add(lampGroup);
+
+      // Load and add white flowers
+      const flowerGroup = new THREE.Group();
+      const whiteFlowerLoader = new GLTFLoader();
+      
+      whiteFlowerLoader.load('/models/white_flower.glb', (gltf) => {
+        const whiteFlowerModel = gltf.scene.children[0] || gltf.scene;
+        whiteFlowerModel.scale.set(0.02, 0.02, 0.02);
+        whiteFlowerModel.updateMatrixWorld(true);
+        
+        // Scatter white flowers throughout the grass area
+        for (let i = -HALF; i < HALF; i += 5) {
+          // Randomly place flowers on both sides
+          for (let side = -1; side <= 1; side += 2) {
+            // Left side or right side
+            for (let j = 0; j < 3; j++) {
+              if (Math.random() > 0.5) { // 50% chance to place a flower
+                const x = side * (4 + Math.random() * 15);
+                const z = i + (Math.random() - 0.5) * 8;
+                
+                const flower = whiteFlowerModel.clone(true);
+                
+                flower.position.set(x, -1.2, z);
+                
+                flower.traverse((obj) => {
+                  if (obj.isMesh) {
+                    obj.castShadow = true;
+                    obj.receiveShadow = true;
+                  }
+                });
+                
+                flowerGroup.add(flower);
+              }
+            }
+          }
+        }
+      });
+      
+      group.add(flowerGroup);
   });
 });
 
