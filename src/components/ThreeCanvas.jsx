@@ -1594,6 +1594,65 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
         </>
       )}
 
+      {/* Retro CD Music Player - Always Visible */}
+      <div className="cd-player" style={{
+        position: 'absolute',
+        top: '100px',
+        left: '20px',
+        width: '120px',
+        height: '120px',
+        borderRadius: '8px',
+        padding: '10px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+      }}>
+        {/* CD Disc - Perfect Circle */}
+        <div style={{
+          width: '80px',
+          height: '80px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 35%, #ffd700, #ffed4e, #ffa500, #d4a017)',
+          border: '2px solid #333',
+          boxShadow: '0 0 10px rgba(255, 215, 0, 0.4), inset -2px -2px 5px rgba(0, 0, 0, 0.4)',
+          position: 'relative',
+          animation: 'spin 3s linear infinite',
+          flexShrink: 0
+        }}>
+          {/* Center hole */}
+          <div style={{
+            position: 'absolute',
+            width: '14px',
+            height: '14px',
+            background: '#333',
+            borderRadius: '50%',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            border: '1px solid #666'
+          }} />
+        </div>
+        {/* Player Label */}
+        <div style={{
+          color: '#ffe100',
+          fontSize: '11px',
+          fontWeight: 'bold',
+          fontFamily: 'monospace',
+          letterSpacing: '1px',
+          textShadow: '0 0 5px rgb(238, 255, 0)',
+          whiteSpace: 'nowrap'
+        }}>MUSIC</div>
+      </div>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {showLicense && (
         <div className="license-modal" onClick={() => { setShowLicense(false); setIsEditingLicense(false); }}>
           <div className="license-card" onClick={(e) => e.stopPropagation()} ref={licenseRef}>
