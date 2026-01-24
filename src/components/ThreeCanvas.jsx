@@ -1163,7 +1163,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
       carDisplayRef.current = displayDiv;
       const displayObj = new CSS2DObject(displayDiv);
       // Attach the label to dashboard anchor so it moves with the interior
-      displayObj.position.set(0, 0, 0);
+      displayObj.position.set(0, -10, 0);
       displayAnchor.add(displayObj);
 
       // Create a canvas for a physical in-world screen (gives a realistic emissive display)
