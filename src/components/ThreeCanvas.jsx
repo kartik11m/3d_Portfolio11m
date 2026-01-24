@@ -890,31 +890,6 @@ treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
       const whiteFlowerLoader = new GLTFLoader();
       const sunflowerLoader = new GLTFLoader();
       
-      // Create wind shader for flowers
-      const flowerWindMaterial = new THREE.MeshStandardMaterial({
-        roughness: 0.8,
-        metalness: 0.0
-      });
-
-      const attachFlowerWindShader = (material) => {
-        material.onBeforeCompile = (shader) => {
-          shader.uniforms.uTime = { value: 0 };
-          shader.vertexShader = shader.vertexShader.replace(
-            '#include <common>',
-            `#include <common>
-             uniform float uTime;`
-          );
-          shader.vertexShader = shader.vertexShader.replace(
-            '#include <begin_vertex>',
-            `#include <begin_vertex>
-             float wind = sin(uTime + position.z * 1.5 + position.x * 0.3) * 0.08;
-             transformed.x += wind * (transformed.y * 0.5);
-             transformed.z += sin(uTime * 0.5 + position.x) * 0.04 * transformed.y;`
-          );
-          material.userData.shader = shader;
-        };
-      };
-      
       whiteFlowerLoader.load('/models/white_flower.glb', (gltf) => {
         const whiteFlowerModel = gltf.scene.children[0] || gltf.scene;
         whiteFlowerModel.scale.set(0.02, 0.02, 0.02);
@@ -946,14 +921,7 @@ treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
                     if (obj.isMesh) {
                       obj.castShadow = true;
                       obj.receiveShadow = true;
-                      
-                      // Apply wind shader to flower materials
-                      const matClone = flowerWindMaterial.clone();
-                      matClone.map = obj.material.map;
-                      matClone.color.copy(obj.material.color);
-                      attachFlowerWindShader(matClone);
-                      matClone.needsUpdate = true;
-                      obj.material = matClone;
+                                           
                     }
                   });
                   
@@ -1321,6 +1289,26 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
 
     const clock = new THREE.Clock();
 
+    // Create circular minimap
+    const minimapSize = 180;
+    const minimapCanvas = document.createElement('canvas');
+    minimapCanvas.width = minimapSize;
+    minimapCanvas.height = minimapSize;
+    minimapCanvas.style.position = 'absolute';
+    minimapCanvas.style.bottom = '20px';
+    minimapCanvas.style.right = '20px';
+    minimapCanvas.style.border = '2px solid rgba(255, 255, 255, 0.7)';
+    minimapCanvas.style.borderRadius = '50%';
+    minimapCanvas.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    minimapCanvas.style.cursor = 'default';
+    minimapCanvas.style.zIndex = '100';
+    minimapCanvas.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+    mountRef.current.appendChild(minimapCanvas);
+
+    const minimapCtx = minimapCanvas.getContext('2d');
+    const mapScale = 0.5; // Scale for world-to-minimap
+    const mapRange = 100; // Range visible on minimap
+
     const animate = () => {
       requestAnimationFrame(animate);
       const time = clock.getElapsedTime();
@@ -1478,6 +1466,71 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
 
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
+
+      // Draw minimap
+      const miniRadius = minimapSize / 2;
+      
+      // Clear minimap with dark background
+      minimapCtx.fillStyle = 'rgba(20, 20, 20, 0.7)';
+      minimapCtx.fillRect(0, 0, minimapSize, minimapSize);
+      
+      // Draw circle border
+      minimapCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      minimapCtx.lineWidth = 2;
+      minimapCtx.beginPath();
+      minimapCtx.arc(miniRadius, miniRadius, miniRadius - 1, 0, Math.PI * 2);
+      minimapCtx.stroke();
+      
+      // Draw center grid/crosshair
+      minimapCtx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+      minimapCtx.lineWidth = 1;
+      minimapCtx.beginPath();
+      minimapCtx.moveTo(miniRadius - 10, miniRadius);
+      minimapCtx.lineTo(miniRadius + 10, miniRadius);
+      minimapCtx.moveTo(miniRadius, miniRadius - 10);
+      minimapCtx.lineTo(miniRadius, miniRadius + 10);
+      minimapCtx.stroke();
+      
+      // Draw road (vertical line in center)
+      minimapCtx.fillStyle = 'rgba(80, 80, 80, 0.6)';
+      minimapCtx.fillRect(miniRadius - 8, 0, 16, minimapSize);
+      
+      // Get car position and draw it on minimap
+      let carX = 0;
+      let carZ = segment1.position.z; // Use segment1 position as reference
+      
+      // Convert world position to minimap position
+      const mapPixelX = miniRadius + (carX * mapScale);
+      const mapPixelZ = miniRadius - (carZ * mapScale);
+      
+      // Clamp to minimap bounds
+      const clampedX = Math.max(miniRadius - miniRadius + 5, Math.min(miniRadius + miniRadius - 5, mapPixelX));
+      const clampedZ = Math.max(miniRadius - miniRadius + 5, Math.min(miniRadius + miniRadius - 5, mapPixelZ));
+      
+      // Draw car symbol (simple rectangle with direction indicator)
+      minimapCtx.save();
+      minimapCtx.translate(clampedX, clampedZ);
+      
+      // Car body
+      minimapCtx.fillStyle = 'rgba(255, 0, 0, 0.9)';
+      minimapCtx.fillRect(-5, -7, 10, 14);
+      
+      // Car roof
+      minimapCtx.fillStyle = 'rgba(255, 100, 0, 0.9)';
+      minimapCtx.fillRect(-3, -4, 6, 8);
+      
+      // Direction indicator (front of car pointing down on minimap / forward)
+      minimapCtx.fillStyle = 'rgba(255, 200, 0, 1)';
+      minimapCtx.beginPath();
+      minimapCtx.moveTo(-2, 8);
+      minimapCtx.lineTo(2, 8);
+      minimapCtx.lineTo(0, 10);
+      minimapCtx.closePath();
+      minimapCtx.fill();
+      
+      minimapCtx.restore();
+
+
     };
     animate();
 
