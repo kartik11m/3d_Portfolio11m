@@ -12,6 +12,8 @@ const ThreeCanvas = () => {
   const [showLicense, setShowLicense] = useState(false);
   const [showResume, setShowResume] = useState(false);
   const [isEditingLicense, setIsEditingLicense] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [textureQuality, setTextureQuality] = useState('high'); // high, medium, low
   const placeholderPhoto = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="320"><rect width="100%" height="100%" fill="%23ddd"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23666" font-size="24">Photo</text></svg>';
   const [licenseData, setLicenseData] = useState({
     name: 'Kartik Maheshwari',
@@ -26,6 +28,15 @@ const ThreeCanvas = () => {
     photo: '/license_photo.png'
   });
   const licenseRef = useRef(null);
+
+  // Scene and renderer refs for dynamic quality updates
+  const sceneRef = useRef(null);
+  const rendererRef = useRef(null);
+  const sunLightRef = useRef(null);
+  const ambientLightRef = useRef(null);
+  const leafParticlesRef = useRef(null);
+  const createLeafParticlesRef = useRef(null); // Function to recreate particles
+  const segmentsRef = useRef([]); // Store segments for updating grass blades
 
   // HUD DOM refs and in-car display ref
   const hudSpeedDomRef = useRef(null);
@@ -470,6 +481,8 @@ const ThreeCanvas = () => {
   const isFPPRef = useRef(false);
   useEffect(() => { isFPPRef.current = isFPP; }, [isFPP]);
 
+
+
   // keep startedRef and speedRef in sync with `started` state
   useEffect(() => {
     startedRef.current = started;
@@ -497,6 +510,8 @@ const ThreeCanvas = () => {
     mountRef.current.appendChild(labelRenderer.domElement);
 
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
+    rendererRef.current = renderer;
     
     // Create cloudy sky texture with animation support
     const canvas = document.createElement('canvas');
@@ -506,7 +521,7 @@ const ThreeCanvas = () => {
     
     const skyTexture = new THREE.CanvasTexture(canvas);
     scene.background = skyTexture;
-    scene.fog = new THREE.Fog('#b0d4ff', 20, 100);
+    // Fog will be updated based on quality settings below
     
     // Function to draw the cloudy sky
     const drawCloudySky = (time) => {
@@ -552,29 +567,121 @@ const ThreeCanvas = () => {
 
     const sunLight = new THREE.DirectionalLight(0xffffff, 2);
     sunLight.position.set(5, 10, 5);
-    sunLight.castShadow = true;
     scene.add(sunLight);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+    sunLightRef.current = sunLight;
+    
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    scene.add(ambientLight);
+    ambientLightRef.current = ambientLight;
 
     const SEG_LEN = 200;
     const HALF = SEG_LEN / 2;
 
     const textureLoader = new THREE.TextureLoader();
 
+    // Comprehensive quality settings
+    const getQualitySettings = () => {
+      switch(textureQuality) {
+        case 'low':
+          return {
+            textureScale: 0.25,
+            particleCount: 200,        // Reduced particles
+            grassBladesPerSide: 500,   // Reduced grass blades
+            grassModelSpawnChance: 0.2, // Less dense grass patches
+            flowerSpawnChance: 0.25,    // Fewer flowers
+            shadowsEnabled: false,      // Disable shadows
+            fogFar: 50,                 // Closer fog
+            ambientLightIntensity: 0.5
+          };
+        case 'medium':
+          return {
+            textureScale: 0.5,
+            particleCount: 1200,
+            grassBladesPerSide: 1500,
+            grassModelSpawnChance: 0.45,
+            flowerSpawnChance: 0.4,
+            shadowsEnabled: true,
+            fogFar: 80,
+            ambientLightIntensity: 0.4
+          };
+        case 'high':
+        default:
+          return {
+            textureScale: 1.0,
+            particleCount: 4000,
+            grassBladesPerSide: 3500,
+            grassModelSpawnChance: 0.55,
+            flowerSpawnChance: 0.5,
+            shadowsEnabled: true,
+            fogFar: 100,
+            ambientLightIntensity: 0.3
+          };
+      }
+    };
+
+    // Function to get texture scale based on quality setting
+    const getTextureScale = () => {
+      return getQualitySettings().textureScale;
+    };
+
+    // Function to apply texture quality settings to all textures in a scene
+    const applyTextureQuality = (scene) => {
+      scene.traverse((obj) => {
+        if (obj.material) {
+          const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+          materials.forEach((mat) => {
+            // Apply quality settings to all texture maps
+            ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'displacementMap', 'envMap'].forEach((mapName) => {
+              if (mat[mapName] && mat[mapName].isTexture) {
+                const tex = mat[mapName];
+                const qualityScale = getTextureScale();
+                
+                // Adjust filtering based on quality
+                if (qualityScale < 1.0) {
+                  tex.magFilter = THREE.LinearFilter;
+                  tex.minFilter = THREE.LinearMipmapLinearFilter;
+                } else {
+                  tex.magFilter = THREE.LinearFilter;
+                  tex.minFilter = THREE.LinearMipmapLinearFilter;
+                }
+              }
+            });
+          });
+        }
+      });
+    };
+
     const terrainColor = textureLoader.load('/textures/Grass/Grass001_4K-JPG_Color.jpg');
     const terrainNormal = textureLoader.load('/textures/Grass/Grass001_4K-JPG_NormalGL.jpg');
     const terrainRoughness = textureLoader.load('/textures/Grass/Grass001_4K-JPG_Roughness.jpg');
     const terrainAO = textureLoader.load('/textures/Grass/Grass001_4K-JPG_AmbientOcclusion.jpg');
 
+    // Apply texture scaling based on quality
+    const qualityScale = getTextureScale();
     [terrainColor, terrainNormal, terrainRoughness, terrainAO].forEach((tex) => {
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
       tex.repeat.set(4, 4);
+      tex.magFilter = qualityScale < 1.0 ? THREE.LinearFilter : THREE.LinearFilter;
+      tex.minFilter = qualityScale < 1.0 ? THREE.LinearMipmapLinearFilter : THREE.LinearMipmapLinearFilter;
     });
 
     const grassColor = textureLoader.load('/textures/Grass/Grass001_4K-JPG_Color.jpg');
     const grassNormal = textureLoader.load('/textures/Grass/Grass001_4K-JPG_NormalGL.jpg');
     const grassRoughness = textureLoader.load('/textures/Grass/Grass001_4K-JPG_Roughness.jpg');
     const grassAO = textureLoader.load('/textures/Grass/Grass001_4K-JPG_AmbientOcclusion.jpg');
+
+    // Apply quality settings to scene
+    const qualitySettings = getQualitySettings();
+    
+    // Update shadows based on quality
+    renderer.shadowMap.enabled = qualitySettings.shadowsEnabled;
+    sunLight.castShadow = qualitySettings.shadowsEnabled;
+    
+    // Update fog based on quality
+    scene.fog = new THREE.Fog('#b0d4ff', 20, qualitySettings.fogFar);
+    
+    // Update ambient light intensity
+    ambientLight.intensity = qualitySettings.ambientLightIntensity;
 
     function createRoadSegment(initialZ) {
       const group = new THREE.Group();
@@ -661,7 +768,7 @@ const ThreeCanvas = () => {
       };
 
       const bladeGeo = new THREE.PlaneGeometry(0.1, 1.5, 1, 4);
-      const bladesPerSide = 3500;
+      const bladesPerSide = qualitySettings.grassBladesPerSide;
       const grassLeft = new THREE.InstancedMesh(bladeGeo, grassMat, bladesPerSide);
       const grassRight = new THREE.InstancedMesh(bladeGeo, grassMat, bladesPerSide);
 
@@ -776,6 +883,7 @@ const ThreeCanvas = () => {
       grassModelLoader.load('/models/lump_grass.glb', (gltf) => {
         const grassModel = gltf.scene.children[0] || gltf.scene;
         grassModel.scale.set(0.001, 0.001, 0.001);
+        applyTextureQuality(grassModel);
         grassModel.traverse((obj) => {
           if (obj.isMesh) {
             obj.castShadow = true;
@@ -790,7 +898,7 @@ const ThreeCanvas = () => {
             const x = j * 0.8;
             if (Math.abs(x) <= 3.2) continue; // skip positions too close to center
 
-            if (Math.random() > 0.55) {
+            if (Math.random() > (1 - qualitySettings.grassModelSpawnChance)) {
               const grass = grassModel.clone(true);
               grass.position.set(x, -1, i);
               // grass.rotation.y = Math.random() * Math.PI * 2;
@@ -833,12 +941,14 @@ const lampLoader = new GLTFLoader();
 treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
   const treeModel = gltf.scene.children[0] || gltf.scene;
   treeModel.scale.set(0.01, 0.01, 0.01);
+  applyTextureQuality(treeModel);
   treeModel.updateMatrixWorld(true);
 
   // Load lamp model once
   lampLoader.load('/models/street_lamp.glb', (lampGltf) => {
     const lampModel = lampGltf.scene;
     lampModel.scale.set(0.11, 0.11, 0.11); // Adjust if needed
+    applyTextureQuality(lampModel);
     lampModel.updateMatrixWorld(true);
 
     let treeCounter = 0;
@@ -893,11 +1003,13 @@ treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
       whiteFlowerLoader.load('/models/white_flower.glb', (gltf) => {
         const whiteFlowerModel = gltf.scene.children[0] || gltf.scene;
         whiteFlowerModel.scale.set(0.02, 0.02, 0.02);
+        applyTextureQuality(whiteFlowerModel);
         whiteFlowerModel.updateMatrixWorld(true);
         
         sunflowerLoader.load('/models/sunflower.glb', (sunGltf) => {
           const sunflowerModel = sunGltf.scene.children[0] || sunGltf.scene;
           sunflowerModel.scale.set(0.008, 0.008, 0.008);
+          applyTextureQuality(sunflowerModel);
           sunflowerModel.updateMatrixWorld(true);
           
           // Scatter white flowers and sunflowers throughout the grass area
@@ -906,7 +1018,7 @@ treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
             for (let side = -1; side <= 1; side += 2) {
               // Left side or right side
               for (let j = 0; j < 3; j++) {
-                if (Math.random() > 0.5) { // 50% chance to place a flower
+                if (Math.random() > (1 - qualitySettings.flowerSpawnChance)) { // Quality-based spawn chance
                   const x = side * (4 + Math.random() * 15);
                   const z = i + (Math.random() - 0.5) * 8;
                   
@@ -946,6 +1058,7 @@ return group;
     billLoader.load('/models/billboard_lowpoly.glb', (gltf) => {
       const billModel = gltf.scene.children[0] || gltf.scene;
       billModel.scale.set(0.4, 0.4, 0.4);
+      applyTextureQuality(billModel);
       billModel.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
 
       const addBillboardsToSegment = (segment) => {
@@ -975,6 +1088,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
 
   // Ensure upright orientation
   fenceModel.rotation.set(-1.52, 0, -0.4);
+  applyTextureQuality(fenceModel);
   fenceModel.updateMatrixWorld(true);
 
   // Measure fence length dynamically
@@ -1110,6 +1224,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
     carLoader.load('/models/car1.glb', (gltf) => {
       carModel = gltf.scene;
       carModel.scale.set(0.28, 0.28, 0.28);
+      applyTextureQuality(carModel);
       carModel.traverse((obj) => {
         if (obj.isMesh) {
           carParts.push(obj);
@@ -1257,9 +1372,9 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
     };
 
     // Create leaf particle system
-    const createLeafParticles = () => {
+    const createLeafParticles = (settings) => {
       const leafGeometry = new THREE.BufferGeometry();
-      const leafCount = 4000;  // Increased from 200
+      const leafCount = settings.particleCount;
       const positions = [];
 
       for (let i = 0; i < leafCount; i++) {
@@ -1285,7 +1400,11 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
       return leafParticles;
     };
 
-    const leafParticles = createLeafParticles();
+    // Store the function for later recreation
+    createLeafParticlesRef.current = createLeafParticles;
+
+    const leafParticles = createLeafParticles(qualitySettings);
+    leafParticlesRef.current = leafParticles;
 
     const clock = new THREE.Clock();
 
@@ -1578,6 +1697,41 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
         <button className="main-menu-btn" onClick={() => setStarted(false)} title="Menu">☰</button>
       )}
 
+      {started && (
+        <button 
+          className="settings-btn" 
+          onClick={() => setShowSettings(!showSettings)} 
+          title="Settings"
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            width: '50px',
+            height: '50px',
+            borderRadius: '50%',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '2px solid rgba(255, 255, 255, 0.3)',
+            color: '#fff',
+            fontSize: '24px',
+            cursor: 'pointer',
+            zIndex: 101,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(10px)',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = 'rgba(255, 255, 255, 0.2)';
+            e.target.style.border = '2px solid rgba(255, 255, 255, 0.6)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+            e.target.style.border = '2px solid rgba(255, 255, 255, 0.3)';
+          }}
+        >⚙</button>
+      )}
+
       {isFPP && (
         <>
           <button className="fpp-exit-btn" onClick={() => setIsFPP(false)} title="Exit First-Person">Exit FPP</button>
@@ -1652,6 +1806,131 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
           to { transform: rotate(360deg); }
         }
       `}</style>
+
+      {showSettings && (
+        <div 
+          className="settings-modal" 
+          onClick={() => setShowSettings(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 200,
+            backdropFilter: 'blur(5px)'
+          }}
+        >
+          <div 
+            className="settings-panel"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
+              borderRadius: '16px',
+              padding: '30px',
+              width: '90%',
+              maxWidth: '400px',
+              border: '2px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+              color: '#fff',
+              fontFamily: 'system-ui, -apple-system, sans-serif'
+            }}
+          >
+            <h2 style={{ margin: '0 0 24px 0', fontSize: '24px', textAlign: 'center', color: '#7ff7a2' }}>
+              Settings
+            </h2>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '12px', fontSize: '14px', color: '#ccc' }}>
+                Texture Quality
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {['low', 'medium', 'high'].map((quality) => (
+                  <button
+                    key={quality}
+                    onClick={() => {
+                      setTextureQuality(quality);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      border: '2px solid',
+                      borderColor: textureQuality === quality ? '#7ff7a2' : 'rgba(255, 255, 255, 0.2)',
+                      background: textureQuality === quality ? 'rgba(127, 247, 162, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                      color: textureQuality === quality ? '#7ff7a2' : '#ccc',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      textTransform: 'capitalize',
+                      transition: 'all 0.3s ease',
+                      fontSize: '13px'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (textureQuality !== quality) {
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+                        e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (textureQuality !== quality) {
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                        e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                      }
+                    }}
+                  >
+                    {quality.charAt(0).toUpperCase() + quality.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#999' }}>
+                Lower quality improves performance
+              </p>
+            </div>
+
+            <div style={{ 
+              marginBottom: '20px', 
+              padding: '12px', 
+              background: 'rgba(127, 247, 162, 0.1)', 
+              borderRadius: '8px',
+              border: '1px solid rgba(127, 247, 162, 0.3)',
+              fontSize: '13px',
+              color: '#b3e5b3'
+            }}>
+              <strong>Current Quality:</strong> {textureQuality.toUpperCase()}
+            </div>
+
+            <button
+              onClick={() => setShowSettings(false)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: 'rgba(127, 247, 162, 0.15)',
+                border: '2px solid #7ff7a2',
+                color: '#7ff7a2',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(127, 247, 162, 0.25)';
+                e.target.style.boxShadow = '0 0 12px rgba(127, 247, 162, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(127, 247, 162, 0.15)';
+                e.target.style.boxShadow = 'none';
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {showLicense && (
         <div className="license-modal" onClick={() => { setShowLicense(false); setIsEditingLicense(false); }}>
