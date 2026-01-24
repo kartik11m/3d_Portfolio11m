@@ -497,8 +497,48 @@ const ThreeCanvas = () => {
     mountRef.current.appendChild(labelRenderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#87ceeb');
-    scene.fog = new THREE.Fog('#87ceeb', 20, 100);
+    
+    // Create cloudy sky texture with animation support
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    const skyTexture = new THREE.CanvasTexture(canvas);
+    scene.background = skyTexture;
+    scene.fog = new THREE.Fog('#b0d4ff', 20, 100);
+    
+    // Function to draw the cloudy sky
+    const drawCloudySky = (time) => {
+      // Create a gradient for sky
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#87ceeb');
+      gradient.addColorStop(1, '#e0f6ff');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Add cloud shapes using circles with movement
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      const cloudPositions = [
+        { x: 80, y: 30, r: 40 }, { x: 120, y: 35, r: 35 }, { x: 160, y: 25, r: 45 },
+        { x: 300, y: 40, r: 50 }, { x: 360, y: 45, r: 38 }, { x: 410, y: 35, r: 42 },
+        { x: 100, y: 70, r: 45 }, { x: 160, y: 75, r: 40 }, { x: 80, y: 65, r: 35 },
+        { x: 350, y: 50, r: 50 }, { x: 420, y: 60, r: 40 }, { x: 300, y: 85, r: 45 }
+      ];
+      
+      cloudPositions.forEach((cloud, i) => {
+        // Move clouds horizontally based on time
+        const moveX = Math.sin(time * 0.3 + i) * 30;
+        const finalX = (cloud.x + moveX) % (canvas.width + 100);
+        
+        ctx.beginPath();
+        ctx.arc(finalX, cloud.y, cloud.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    };
+    
+    // Initial draw
+    drawCloudySky(0);
 
     const camera = new THREE.PerspectiveCamera(65, w / h, 0.1, 500);
     camera.position.set(0, 3, 10);
@@ -1284,6 +1324,10 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
     const animate = () => {
       requestAnimationFrame(animate);
       const time = clock.getElapsedTime();
+
+      // Update cloud animation
+      drawCloudySky(time);
+      skyTexture.needsUpdate = true;
 
       // Update leaf particles with wind effect
       if (leafParticles) {
