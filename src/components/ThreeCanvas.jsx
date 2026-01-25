@@ -45,6 +45,45 @@ const ThreeCanvas = () => {
   // Steering angle state and ref (used for HUD steering wheel)
   const steerRef = useRef(0);
   const [steerAngle, setSteerAngle] = useState(0);
+  const [showSongList, setShowSongList] = useState(false);
+  const [isPlayingCD, setIsPlayingCD] = useState(true);
+  const [currentSong, setCurrentSong] = useState(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const audioRef = useRef(null);
+
+  const songs = [
+    { id: 1, title: 'Rihaa', artist: 'Arijit Singh', url: '/songs/Rihaa.mp3' },
+    { id: 2, title: 'Midnight Drive', artist: 'Ed Sheeran', url: '/songs/Sapphire.mp3' },
+    { id: 3, title: 'Mashup', artist: 'Shybu', url: '/songs/Mashup.mp3' },
+    { id: 4, title: 'Retro Pulse', artist: 'Nostalgia Wave', url: '/assets/songs/retro-pulse.mp3' },
+    { id: 5, title: 'Echo of Tomorrow', artist: 'Future Sound', url: '/assets/songs/echo-tomorrow.mp3' },
+    { id: 6, title: 'Crystal Nights', artist: 'Ambient Beats', url: '/assets/songs/crystal-nights.mp3' },
+  ];
+
+  const handlePlaySong = (song) => {
+    if (audioRef.current) {
+      audioRef.current.src = song.url;
+      audioRef.current.play().catch(() => {
+        console.warn('Could not play audio. Make sure the file exists at:', song.url);
+      });
+      setCurrentSong(song);
+      setIsAudioPlaying(true);
+      setShowSongList(false);
+    }
+  };
+
+  const handlePlayPause = () => {
+    if (audioRef.current) {
+      if (isAudioPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play().catch(() => {
+          console.warn('Could not play audio');
+        });
+      }
+      setIsAudioPlaying(!isAudioPlaying);
+    }
+  };
 
   // If the default image path doesn't load, fall back to the placeholder
   useEffect(() => {
@@ -913,7 +952,7 @@ const ThreeCanvas = () => {
                   obj.frustumCulled = false;
                 }
               });
-              group.add(grass);
+              // group.add(grass);
             }
           }
         }
@@ -1000,7 +1039,7 @@ treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
       const whiteFlowerLoader = new GLTFLoader();
       const sunflowerLoader = new GLTFLoader();
       
-      whiteFlowerLoader.load('/models/white_flower.glb', (gltf) => {
+      whiteFlowerLoader.load('/models/sunflower.glb', (gltf) => {
         const whiteFlowerModel = gltf.scene.children[0] || gltf.scene;
         whiteFlowerModel.scale.set(0.02, 0.02, 0.02);
         applyTextureQuality(whiteFlowerModel);
@@ -1753,8 +1792,8 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
         position: 'absolute',
         top: '100px',
         left: '20px',
-        width: '120px',
-        height: '120px',
+        width: 'auto',
+        minWidth: '120px',
         borderRadius: '8px',
         padding: '10px',
         display: 'flex',
@@ -1764,17 +1803,23 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
         gap: '8px',
       }}>
         {/* CD Disc - Perfect Circle */}
-        <div style={{
-          width: '80px',
-          height: '80px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 35%, #ffd700, #ffed4e, #ffa500, #d4a017)',
-          border: '2px solid #333',
-          boxShadow: '0 0 10px rgba(255, 215, 0, 0.4), inset -2px -2px 5px rgba(0, 0, 0, 0.4)',
-          position: 'relative',
-          animation: 'spin 3s linear infinite',
-          flexShrink: 0
-        }}>
+        <div 
+          onClick={() => {
+            setShowSongList(!showSongList);
+          }}
+          style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 35% 35%, #ffd700, #ffed4e, #ffa500, #d4a017)',
+            border: '2px solid #333',
+            boxShadow: '0 0 10px rgba(255, 215, 0, 0.4), inset -2px -2px 5px rgba(0, 0, 0, 0.4)',
+            position: 'relative',
+            animation: isAudioPlaying ? 'spin 3s linear infinite' : 'none',
+            flexShrink: 0,
+            cursor: 'pointer',
+            transition: 'all 0.3s ease'
+          }}>
           {/* Center hole */}
           <div style={{
             position: 'absolute',
@@ -1797,7 +1842,101 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
           letterSpacing: '1px',
           textShadow: '0 0 5px rgb(238, 255, 0)',
           whiteSpace: 'nowrap'
-        }}>MUSIC</div>
+        }}>
+          {showSongList ? 'SONGS' : 'MUSIC'}
+        </div>
+
+        {/* Song List Dropdown */}
+        {showSongList && (
+          <div style={{
+            marginTop: '8px',
+            background: 'rgba(0, 0, 0, 0.8)',
+            border: '2px solid #ffe100',
+            borderRadius: '6px',
+            padding: '8px',
+            minWidth: '200px',
+            maxHeight: '300px',
+            overflowY: 'auto',
+            boxShadow: '0 0 15px rgba(255, 225, 0, 0.3)'
+          }}>
+            {songs.map((song) => (
+              <div
+                key={song.id}
+                onClick={() => {
+                  handlePlaySong(song);
+                }}
+                style={{
+                  padding: '8px 10px',
+                  color: currentSong?.id === song.id ? '#00ff00' : '#ffe100',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid rgba(255, 225, 0, 0.2)',
+                  backgroundColor: currentSong?.id === song.id ? 'rgba(0, 255, 0, 0.1)' : 'transparent',
+                  transition: 'all 0.2s ease',
+                  textShadow: '0 0 5px currentColor'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = 'rgba(255, 225, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = currentSong?.id === song.id ? 'rgba(0, 255, 0, 0.1)' : 'transparent';
+                }}
+              >
+                <div style={{ fontWeight: 'bold' }}>{song.title}</div>
+                <div style={{ fontSize: '10px', color: '#aaa' }}>{song.artist}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Currently Playing Song Display */}
+        {currentSong && !showSongList && (
+          <div style={{
+            marginTop: '8px',
+            color: '#00ff00',
+            fontSize: '10px',
+            fontFamily: 'monospace',
+            textAlign: 'center',
+            textShadow: '0 0 5px rgba(0, 255, 0, 0.5)',
+            maxWidth: '150px'
+          }}>
+            <div style={{ fontWeight: 'bold' }}>Playing:</div>
+            <div style={{ marginBottom: '8px' }}>{currentSong.title}</div>
+            <button
+              onClick={handlePlayPause}
+              style={{
+                background: '#00ff00',
+                color: '#000',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '6px 12px',
+                fontFamily: 'monospace',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontSize: '11px',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 0 10px rgba(0, 255, 0, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.6)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.boxShadow = '0 0 10px rgba(0, 255, 0, 0.3)';
+              }}
+            >
+              {isAudioPlaying ? '⏸ PAUSE' : '▶ PLAY'}
+            </button>
+          </div>
+        )}
+
+        {/* Hidden Audio Element */}
+        <audio
+          ref={audioRef}
+          onEnded={() => {
+            setIsAudioPlaying(false);
+          }}
+        />
       </div>
 
       <style>{`
