@@ -726,13 +726,75 @@ const ThreeCanvas = () => {
       const group = new THREE.Group();
       group.position.z = initialZ;
 
-      // Road
+      // Stylized Road with artistic appearance
       const roadGeo = new THREE.PlaneGeometry(6, SEG_LEN);
-      const roadMat = new THREE.MeshStandardMaterial({ color: '#333333', side: THREE.DoubleSide });
+      
+      // Create a stylized road texture canvas
+      const roadCanvas = document.createElement('canvas');
+      roadCanvas.width = 512;
+      roadCanvas.height = 256;
+      const roadCtx = roadCanvas.getContext('2d');
+      
+      // Stylized gradient - warmer, more artistic colors
+      const roadGrad = roadCtx.createLinearGradient(0, 0, 0, roadCanvas.height);
+      roadGrad.addColorStop(0, '#3d3d4d');
+      roadGrad.addColorStop(0.5, '#2a2a3a');
+      roadGrad.addColorStop(1, '#3d3d4d');
+      
+      roadCtx.fillStyle = roadGrad;
+      roadCtx.fillRect(0, 0, roadCanvas.width, roadCanvas.height);
+      
+      // Add artistic noise texture
+      for (let i = 0; i < 800; i++) {
+        const x = Math.random() * roadCanvas.width;
+        const y = Math.random() * roadCanvas.height;
+        const size = Math.random() * 3;
+        const opacity = Math.random() * 0.2;
+        roadCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+        roadCtx.fillRect(x, y, size, size);
+      }
+      
+      // Add stylized lane sections with slight color variation
+      roadCtx.fillStyle = 'rgba(100, 120, 150, 0.08)';
+      for (let i = 0; i < roadCanvas.height; i += 40) {
+        roadCtx.fillRect(0, i, roadCanvas.width, 20);
+      }
+      
+      const roadTexture = new THREE.CanvasTexture(roadCanvas);
+      roadTexture.repeat.set(0.5, 2);
+      roadTexture.wrapS = THREE.RepeatWrapping;
+      roadTexture.wrapT = THREE.RepeatWrapping;
+      
+      const roadMat = new THREE.MeshStandardMaterial({ 
+        map: roadTexture,
+        color: '#3a3a48',
+        metalness: 0.15,
+        roughness: 0.75,
+        side: THREE.DoubleSide
+      });
       const road = new THREE.Mesh(roadGeo, roadMat);
       road.rotation.x = -Math.PI / 2;
       road.receiveShadow = true;
       group.add(road);
+      
+      // Add stylized road edge markings (white stripes on sides)
+      const edgeStripeMat = new THREE.MeshStandardMaterial({ 
+        color: '#f0f0f0',
+        metalness: 0.1,
+        roughness: 0.6
+      });
+      
+      // Left edge stripe
+      const leftEdge = new THREE.Mesh(new THREE.PlaneGeometry(0.15, SEG_LEN), edgeStripeMat);
+      leftEdge.rotation.x = -Math.PI / 2;
+      leftEdge.position.set(-2.95, 0.005, 0);
+      group.add(leftEdge);
+      
+      // Right edge stripe
+      const rightEdge = new THREE.Mesh(new THREE.PlaneGeometry(0.15, SEG_LEN), edgeStripeMat);
+      rightEdge.rotation.x = -Math.PI / 2;
+      rightEdge.position.set(2.95, 0.005, 0);
+      group.add(rightEdge);
 
       // Terrain
       const terrainGeo = new THREE.PlaneGeometry(40, SEG_LEN, 100, 100);
@@ -958,11 +1020,19 @@ const ThreeCanvas = () => {
         }
       });
 
-            // Road stripes
-      const stripeMaterial = new THREE.MeshStandardMaterial({ color: '#ffffff' });
+            // Stylized Road markings - artistic center dashes with varying sizes
+      const stripeMaterial = new THREE.MeshStandardMaterial({ 
+        color: '#fff4a0',
+        metalness: 0.25,
+        roughness: 0.5
+      });
       const stripeGroup = new THREE.Group();
+      
+      // Create alternating dash sizes for visual interest
       for (let i = -HALF; i < HALF; i += 5) {
-        const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 1), stripeMaterial);
+        const isLarge = (Math.floor(i / 5) % 3) === 0; // Every 3rd dash is larger
+        const stripeHeight = isLarge ? 1.5 : 1;
+        const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.4, stripeHeight), stripeMaterial);
         stripe.rotation.x = -Math.PI / 2;
         stripe.position.set(0, 0.01, i);
         stripeGroup.add(stripe);
