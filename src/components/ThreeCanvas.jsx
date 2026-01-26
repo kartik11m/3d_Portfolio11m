@@ -625,7 +625,7 @@ const ThreeCanvas = () => {
           return {
             textureScale: 0.25,
             particleCount: 200,        // Reduced particles
-            grassBladesPerSide: 500,   // Reduced grass blades
+            grassBladesPerSide: 150,   // Reduced for patches
             grassModelSpawnChance: 0.2, // Less dense grass patches
             flowerSpawnChance: 0.25,    // Fewer flowers
             shadowsEnabled: false,      // Disable shadows
@@ -636,7 +636,7 @@ const ThreeCanvas = () => {
           return {
             textureScale: 0.5,
             particleCount: 1200,
-            grassBladesPerSide: 1500,
+            grassBladesPerSide: 400,  // Medium patches
             grassModelSpawnChance: 0.45,
             flowerSpawnChance: 0.4,
             shadowsEnabled: true,
@@ -648,7 +648,7 @@ const ThreeCanvas = () => {
           return {
             textureScale: 1.0,
             particleCount: 4000,
-            grassBladesPerSide: 3500,
+            grassBladesPerSide: 500,   // High quality patches
             grassModelSpawnChance: 0.55,
             flowerSpawnChance: 0.5,
             shadowsEnabled: true,
@@ -695,9 +695,15 @@ const ThreeCanvas = () => {
     const terrainRoughness = textureLoader.load('/textures/Grass/Grass001_4K-JPG_Roughness.jpg');
     const terrainAO = textureLoader.load('/textures/Grass/Grass001_4K-JPG_AmbientOcclusion.jpg');
 
+    // Load grass_01_1k textures for the ground
+    const groundColor = textureLoader.load('/textures/grass_01_1k/grass_01_color_1k.png');
+    const groundNormal = textureLoader.load('/textures/grass_01_1k/grass_01_normal_gl_1k.png');
+    const groundRoughness = textureLoader.load('/textures/grass_01_1k/grass_01_roughness_1k.png');
+    const groundAO = textureLoader.load('/textures/grass_01_1k/grass_01_ambient_occlusion_1k.png');
+
     // Apply texture scaling based on quality
     const qualityScale = getTextureScale();
-    [terrainColor, terrainNormal, terrainRoughness, terrainAO].forEach((tex) => {
+    [terrainColor, terrainNormal, terrainRoughness, terrainAO, groundColor, groundNormal, groundRoughness, groundAO].forEach((tex) => {
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
       tex.repeat.set(4, 4);
       tex.magFilter = qualityScale < 1.0 ? THREE.LinearFilter : THREE.LinearFilter;
@@ -796,29 +802,16 @@ const ThreeCanvas = () => {
       rightEdge.position.set(2.95, 0.005, 0);
       group.add(rightEdge);
 
-      // Terrain
-      const terrainGeo = new THREE.PlaneGeometry(40, SEG_LEN, 100, 100);
+      // Stylized Terrain Ground using grass_01_1k textures
+      const terrainGeo = new THREE.PlaneGeometry(40, SEG_LEN, 80, 80);
       terrainGeo.setAttribute('uv2', new THREE.BufferAttribute(terrainGeo.attributes.uv.array, 2));
 
-      const noise = new ImprovedNoise();
-      const scale = 0.05;
-      for (let i = 0; i < terrainGeo.attributes.position.count; i++) {
-        const x = terrainGeo.attributes.position.getX(i);
-        const y0 = terrainGeo.attributes.position.getY(i);
-        const nx = noise.noise(x * scale, y0 * scale, 0);
-        const n2 = noise.noise(x * scale * 2.0, y0 * scale * 2.0, 10);
-        let height = nx * 1.0 + n2 * 0.3;
-        height = Math.max(height, -0.2); // clamp to avoid too low dips
-        terrainGeo.attributes.position.setZ(i, height);
-      }
-      terrainGeo.computeVertexNormals();
-
       const terrainMat = new THREE.MeshStandardMaterial({
-        map: terrainColor,
-        normalMap: terrainNormal,
-        roughnessMap: terrainRoughness,
-        aoMap: terrainAO,
-        roughness: 1.0,
+        map: groundColor,
+        normalMap: groundNormal,
+        roughnessMap: groundRoughness,
+        aoMap: groundAO,
+        roughness: 0.9,
         metalness: 0.0
       });
 
@@ -834,19 +827,20 @@ const ThreeCanvas = () => {
 
       group.add(terrainLeft, terrainRight);
 
-      // Grass blades
+      // Stylized Grass blades with vibrant colors
       const grassMat = new THREE.MeshStandardMaterial({
-        map: grassColor,
-        normalMap: grassNormal,
-        roughnessMap: grassRoughness,
-        aoMap: grassAO,
+        color: '#5ec96f',  // Vibrant green color
+        map: groundColor,
+        normalMap: groundNormal,
+        roughnessMap: groundRoughness,
+        aoMap: groundAO,
         // Use alphaTest (discard fragments) and write depth so other
         // transparent objects (like tree leaves) depth-test correctly.
         transparent: false,
         alphaTest: 0.5,
         side: THREE.DoubleSide,
         depthWrite: true,
-        roughness: 0.9,
+        roughness: 0.7,
         metalness: 0.0,
         shadowSide: THREE.FrontSide
       });
@@ -861,47 +855,62 @@ const ThreeCanvas = () => {
         shader.vertexShader = shader.vertexShader.replace(
           '#include <begin_vertex>',
           `#include <begin_vertex>
-           float wind = sin(uTime + position.z * 2.0 + position.x * 0.5) * 0.15;
-           transformed.x += wind * (transformed.y * 0.8);
-           transformed.z += sin(uTime * 0.7 + position.x) * 0.08 * transformed.y;`
+           float wind = sin(uTime + position.z * 2.0 + position.x * 0.5) * 0.2;
+           transformed.x += wind * (transformed.y * 0.85);
+           transformed.z += sin(uTime * 0.7 + position.x) * 0.1 * transformed.y;`
         );
         grassMat.userData.shader = shader;
       };
 
-      const bladeGeo = new THREE.PlaneGeometry(0.1, 1.5, 1, 4);
-      const bladesPerSide = qualitySettings.grassBladesPerSide;
-      const grassLeft = new THREE.InstancedMesh(bladeGeo, grassMat, bladesPerSide);
-      const grassRight = new THREE.InstancedMesh(bladeGeo, grassMat, bladesPerSide);
+      const bladeGeo = new THREE.PlaneGeometry(0.12, 1.8, 2, 5);  // Taller, wider blades
+      const patchesPerSide = qualitySettings.grassBladesPerSide;
+      const grassLeft = new THREE.InstancedMesh(bladeGeo, grassMat, patchesPerSide);
+      const grassRight = new THREE.InstancedMesh(bladeGeo, grassMat, patchesPerSide);
 
       grassLeft.castShadow = true;
       grassRight.castShadow = true;
 
       const dummy = new THREE.Object3D();
-      for (let i = 0; i < bladesPerSide; i++) {
-        // sample left-side x and ensure it stays left of the road
-        let x = -10 + (Math.random() - 0.5) * 40;
-        while (x > -4.6) { // push until it's safely left of the road
-          x = -10 + (Math.random() - 0.5) * 40;
+      // Create grass patches on the left side
+      for (let i = 0; i < patchesPerSide; i++) {
+        // Create patch centers randomly
+        let patchX = -10 + (Math.random() - 0.5) * 40;
+        while (patchX > -4.6) {
+          patchX = -10 + (Math.random() - 0.5) * 40;
         }
-        const z = (Math.random() - 0.5) * SEG_LEN;
-        dummy.position.set(x, -0.8, z);
+        const patchZ = (Math.random() - 0.5) * SEG_LEN;
+        
+        // Create cluster around patch center
+        const clusterRadius = 1.5;
+        const offsetX = (Math.random() - 0.5) * clusterRadius;
+        const offsetZ = (Math.random() - 0.5) * clusterRadius;
+        
+        dummy.position.set(patchX + offsetX, -0.8, patchZ + offsetZ);
         dummy.rotation.y = Math.random() * Math.PI;
-        const s = 0.7 + Math.random() * 0.6;
-        dummy.scale.set(s * 0.5 + Math.random() * 0.15, s * 0.9, s * 0.5 + Math.random() * 0.15);
+        const s = 1.0 + Math.random() * 0.4;
+        dummy.scale.set(s * 0.7, s * 1.0, s * 0.7);
         dummy.updateMatrix();
         grassLeft.setMatrixAt(i, dummy.matrix);
       }
-      for (let i = 0; i < bladesPerSide; i++) {
-        // sample right-side x and ensure it stays right of the road
-        let x = 10 + (Math.random() - 0.5) * 40;
-        while (x < 4.6) { // push until it's safely right of the road
-          x = 10 + (Math.random() - 0.5) * 40;
+      
+      // Create grass patches on the right side
+      for (let i = 0; i < patchesPerSide; i++) {
+        // Create patch centers randomly
+        let patchX = 10 + (Math.random() - 0.5) * 40;
+        while (patchX < 4.6) {
+          patchX = 10 + (Math.random() - 0.5) * 40;
         }
-        const z = (Math.random() - 0.5) * SEG_LEN;
-        dummy.position.set(x, -0.8, z);
+        const patchZ = (Math.random() - 0.5) * SEG_LEN;
+        
+        // Create cluster around patch center
+        const clusterRadius = 1.5;
+        const offsetX = (Math.random() - 0.5) * clusterRadius;
+        const offsetZ = (Math.random() - 0.5) * clusterRadius;
+        
+        dummy.position.set(patchX + offsetX, -0.8, patchZ + offsetZ);
         dummy.rotation.y = Math.random() * Math.PI;
-        const s = 0.7 + Math.random() * 0.6;
-        dummy.scale.set(s * 0.5 + Math.random() * 0.15, s * 0.9, s * 0.5 + Math.random() * 0.15);
+        const s = 1.0 + Math.random() * 0.4;
+        dummy.scale.set(s * 0.7, s * 1.0, s * 0.7);
         dummy.updateMatrix();
         grassRight.setMatrixAt(i, dummy.matrix);
       }
@@ -910,15 +919,15 @@ const ThreeCanvas = () => {
 
       group.add(grassLeft, grassRight);
 
-      // Create wind shader material for grass model
+      // Create wind shader material for stylized grass model
       const windShaderMaterial = new THREE.MeshStandardMaterial({
         // Use the grass textures so model clones correctly alpha-test
-        map: grassColor,
-        normalMap: grassNormal,
-        roughnessMap: grassRoughness,
-        aoMap: grassAO,
-        color: '#8fbc8f',
-        roughness: 0.6,
+        color: '#6dd47d',  // Vibrant green
+        map: groundColor,
+        normalMap: groundNormal,
+        roughnessMap: groundRoughness,
+        aoMap: groundAO,
+        roughness: 0.65,
         metalness: 0.0,
         // Ensure depth is written for correct compositing with leaves
         transparent: false,
@@ -1192,11 +1201,11 @@ return group;
 
     // Load fences and attach continuously
 const gltfLoader = new GLTFLoader();
-gltfLoader.load('/models/fence_wood.glb', (gltf) => {
+gltfLoader.load('/models/stylized_fence.glb', (gltf) => {
   const fenceModel = gltf.scene.children[0] || gltf.scene;
 
   // Ensure upright orientation
-  fenceModel.rotation.set(-1.52, 0, -0.4);
+  fenceModel.rotation.set(-1.55, 0, 0);
   applyTextureQuality(fenceModel);
   fenceModel.updateMatrixWorld(true);
 
@@ -1213,7 +1222,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
     for (let i = -HALF; i < HALF; i += fenceSpacing) {
       // Left fence — rotate to face right (toward road center)
       const fenceL = fenceModel.clone(true);
-      fenceL.position.set(fenceDistLeft, -0.8, i + fenceOffsetZ);
+      fenceL.position.set(fenceDistLeft, -1, i + fenceOffsetZ);
       
       fenceL.castShadow = true;
       fenceL.traverse((obj) => {
@@ -1223,7 +1232,7 @@ gltfLoader.load('/models/fence_wood.glb', (gltf) => {
 
       // Right fence — rotate to face left (toward road center)
       const fenceR = fenceModel.clone(true);
-      fenceR.position.set(fenceDistRight, -0.8, i + fenceOffsetZ);
+      fenceR.position.set(fenceDistRight, -1, i + fenceOffsetZ);
       fenceR.castShadow = true;
       fenceR.traverse((obj) => {
         if (obj.isMesh) obj.castShadow = true;
