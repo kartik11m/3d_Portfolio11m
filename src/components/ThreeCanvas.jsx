@@ -1056,9 +1056,9 @@ const lampGroup = new THREE.Group();
 const treeLoader = new GLTFLoader();
 const lampLoader = new GLTFLoader();
 
-treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
+treeLoader.load('/models/stylized_tree_03_clean.glb', (gltf) => {
   const treeModel = gltf.scene.children[0] || gltf.scene;
-  treeModel.scale.set(0.01, 0.01, 0.01);
+  treeModel.scale.set(.0035, .0035, .0035);
   applyTextureQuality(treeModel);
   treeModel.updateMatrixWorld(true);
 
@@ -1071,7 +1071,7 @@ treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
 
     let treeCounter = 0;
 
-    for (let i = -HALF; i < HALF; i += 15) {
+    for (let i = -HALF; i < HALF; i += 10) {
       treeCounter++;
 
       if (treeCounter % 3 === 0) {
@@ -1095,14 +1095,14 @@ treeLoader.load('/models/trees_low_poly.glb', (gltf) => {
       } else {
         // Trees
         const treeL = treeModel.clone(true);
-        treeL.position.set(-5.5, -1, i);
+        treeL.position.set(-6.5, -1, i);
         treeL.traverse((obj) => {
           if (obj.isMesh) obj.castShadow = true;
         });
         treeGroup.add(treeL);
 
         const treeR = treeModel.clone(true);
-        treeR.position.set(5.5, -1, i);
+        treeR.position.set(6.5, -1, i);
         treeR.traverse((obj) => {
           if (obj.isMesh) obj.castShadow = true;
         });
@@ -1198,6 +1198,33 @@ return group;
     const segment1 = createRoadSegment(0);
     const segment2 = createRoadSegment(-SEG_LEN);
     scene.add(segment1, segment2);
+
+    // Load flying plane
+    const planeLoader = new GLTFLoader();
+    let planeModel = null;
+    planeLoader.load('/models/stylized_ww1_plane.glb', (gltf) => {
+      planeModel = gltf.scene.children[0] || gltf.scene;
+      planeModel.scale.set(0.5, 0.5, 0.5);
+      applyTextureQuality(planeModel);
+      planeModel.updateMatrixWorld(true);
+      
+      // Initial position high in the sky
+      planeModel.position.set(0, 20, -150);
+      
+      // Face the plane towards the camera (pointing forward along +Z)
+      planeModel.rotation.y = Math.PI;
+      
+      planeModel.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+      
+      scene.add(planeModel);
+    }, undefined, (error) => {
+      console.warn('Could not load plane model:', error);
+    });
 
     // Load fences and attach continuously
 const gltfLoader = new GLTFLoader();
@@ -1595,6 +1622,23 @@ gltfLoader.load('/models/stylized_fence.glb', (gltf) => {
           obj.material.userData.shader.uniforms.uTime.value = time;
         }
       });
+
+      // Animate flying plane
+      if (planeModel) {
+        // Plane moves towards the camera (positive Z direction towards camera)
+        planeModel.position.z += 0.5;  // Faster speed of approach
+        
+        // Add slight vertical bobbing motion
+        planeModel.position.y = 15 + Math.sin(time * 0.5) * 2;
+        
+        // Add slight banking/rolling motion for realism
+        planeModel.rotation.z = Math.sin(time * 0.2) * 0.2;
+        
+        // Reset position when it gets too close
+        if (planeModel.position.z > 20) {
+          planeModel.position.z = -150;
+        }
+      }
 
       // Move segments
       segment1.position.z += speedRef.current;
