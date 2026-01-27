@@ -1113,57 +1113,48 @@ treeLoader.load('/models/stylized_tree_03_clean.glb', (gltf) => {
     group.add(treeGroup);
     group.add(lampGroup);
 
-      // Load and add white flowers
-      const flowerGroup = new THREE.Group();
-      const whiteFlowerLoader = new GLTFLoader();
-      const sunflowerLoader = new GLTFLoader();
+      // Load and add stylized fantasy taverns on both sides
+      const tavernGroup = new THREE.Group();
+      const tavernLoader = new GLTFLoader();
       
-      whiteFlowerLoader.load('/models/sunflower.glb', (gltf) => {
-        const whiteFlowerModel = gltf.scene.children[0] || gltf.scene;
-        whiteFlowerModel.scale.set(0.02, 0.02, 0.02);
-        applyTextureQuality(whiteFlowerModel);
-        whiteFlowerModel.updateMatrixWorld(true);
+      tavernLoader.load('/models/stylized_house.glb', (gltf) => {
+        const tavernModel = gltf.scene;
+        tavernModel.scale.set(5, 5, 5);
+        applyTextureQuality(tavernModel);
+        tavernModel.updateMatrixWorld(true);
         
-        sunflowerLoader.load('/models/sunflower.glb', (sunGltf) => {
-          const sunflowerModel = sunGltf.scene.children[0] || sunGltf.scene;
-          sunflowerModel.scale.set(0.008, 0.008, 0.008);
-          applyTextureQuality(sunflowerModel);
-          sunflowerModel.updateMatrixWorld(true);
-          
-          // Scatter white flowers and sunflowers throughout the grass area
-          for (let i = -HALF; i < HALF; i += 5) {
-            // Randomly place flowers on both sides
-            for (let side = -1; side <= 1; side += 2) {
-              // Left side or right side
-              for (let j = 0; j < 3; j++) {
-                if (Math.random() > (1 - qualitySettings.flowerSpawnChance)) { // Quality-based spawn chance
-                  const x = side * (4 + Math.random() * 15);
-                  const z = i + (Math.random() - 0.5) * 8;
-                  
-                  // Randomly choose between white flower and sunflower
-                  const flowerType = Math.random() > 0.5 ? whiteFlowerModel : sunflowerModel;
-                  const flower = flowerType.clone(true);
-                  
-                  flower.position.set(x, -1.2, z);
-                  flower.rotation.z = Math.random()* Math.PI * 2;
-                  
-                  flower.traverse((obj) => {
-                    if (obj.isMesh) {
-                      obj.castShadow = true;
-                      obj.receiveShadow = true;
-                                           
-                    }
-                  });
-                  
-                  flowerGroup.add(flower);
-                }
-              }
+        // Add two taverns on the left side
+        for (let i = 0; i < 2; i++) {
+          const tavernLeft = tavernModel.clone(true);
+          const z = -HALF + (i + 1) * (HALF / 3.5); // HALF / 3.5 increase this to reduce the space like 4.5
+          tavernLeft.position.set(-15, -1, z);
+          tavernLeft.rotation.y = Math.PI / 2; // Face towards the road
+          tavernLeft.traverse((obj) => {
+            if (obj.isMesh) {
+              obj.castShadow = true;
+              obj.receiveShadow = true;
             }
-          }
-        });
+          });
+          tavernGroup.add(tavernLeft);
+        }
+        
+        // Add two taverns on the right side
+        for (let i = 0; i < 2; i++) {
+          const tavernRight = tavernModel.clone(true);
+          const z = -HALF + (i + 1) * (HALF / 3.5);
+          tavernRight.position.set(15, -1, z);
+          tavernRight.rotation.y = -Math.PI / 2; // Face towards the road
+          tavernRight.traverse((obj) => {
+            if (obj.isMesh) {
+              obj.castShadow = true;
+              obj.receiveShadow = true;
+            }
+          });
+          tavernGroup.add(tavernRight);
+        }
       });
       
-      group.add(flowerGroup);
+      group.add(tavernGroup);
   });
 });
 
@@ -1202,6 +1193,8 @@ return group;
     // Load flying plane
     const planeLoader = new GLTFLoader();
     let planeModel = null;
+    let planeAnimationMixer = null;
+    let planeAnimationClips = [];
     planeLoader.load('/models/stylized_ww1_plane.glb', (gltf) => {
       planeModel = gltf.scene.children[0] || gltf.scene;
       planeModel.scale.set(0.5, 0.5, 0.5);
@@ -1220,6 +1213,19 @@ return group;
           obj.receiveShadow = true;
         }
       });
+      
+      // Set up animation mixer and play animations if available
+      if (gltf.animations && gltf.animations.length > 0) {
+        planeAnimationMixer = new THREE.AnimationMixer(planeModel);
+        planeAnimationClips = gltf.animations;
+        console.log('WW1 Plane animations available:', planeAnimationClips.map(clip => clip.name));
+        
+        // Play the first animation by default
+        if (planeAnimationClips.length > 0) {
+          planeAnimationMixer.clipAction(planeAnimationClips[0]).play();
+          planeAnimationMixer.timeScale = 50; // Speed up animation by 2x
+        }
+      }
       
       scene.add(planeModel);
     }, undefined, (error) => {
@@ -1242,8 +1248,8 @@ gltfLoader.load('/models/stylized_fence.glb', (gltf) => {
 
   const fenceSpacing = fenceLength; // ensures no overlap
   const fenceOffsetZ = 0.5;         // slight forward offset
-  const fenceDistLeft = -4.8;       // left side of road
-  const fenceDistRight = 4.8;       // right side of road
+  const fenceDistLeft = -5.1;       // left side of road
+  const fenceDistRight = 5.1;       // right side of road
 
   const addFencesToSegment = (segment) => {
     for (let i = -HALF; i < HALF; i += fenceSpacing) {
@@ -1623,6 +1629,11 @@ gltfLoader.load('/models/stylized_fence.glb', (gltf) => {
         }
       });
 
+      // Update plane animations
+      if (planeAnimationMixer) {
+        planeAnimationMixer.update(clock.getDelta());
+      }
+
       // Animate flying plane
       if (planeModel) {
         // Plane moves towards the camera (positive Z direction towards camera)
@@ -1632,7 +1643,7 @@ gltfLoader.load('/models/stylized_fence.glb', (gltf) => {
         planeModel.position.y = 15 + Math.sin(time * 0.5) * 2;
         
         // Add slight banking/rolling motion for realism
-        planeModel.rotation.z = Math.sin(time * 0.2) * 0.2;
+        // planeModel.rotation.z = Math.sin(time * 0.2) * 0.2;
         
         // Reset position when it gets too close
         if (planeModel.position.z > 20) {
