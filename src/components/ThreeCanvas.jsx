@@ -1131,8 +1131,9 @@ treeLoader.load('/models/stylized_tree_03_clean.glb', (gltf) => {
             { xLeft: -20, xRight: 20, rotLeft: Math.PI / 3, rotRight: -Math.PI / 3, yOffset: 0, zOffset: 0 },
           ]
         },
-        '/models/barber_shop_-_stylised.glb': {
+        '/models/low_poly_store_building.glb': {
           scale: 1,
+          rightSideOnly: false,
           configs: [
             { xLeft: -20, xRight: 20, rotLeft: Math.PI / 2.2, rotRight: -Math.PI / 2.2 },
           ]
@@ -1195,16 +1196,18 @@ treeLoader.load('/models/stylized_tree_03_clean.glb', (gltf) => {
           const z = -HALF + (i + 1) * (HALF / (buildingsPerSide * 1.3));
           
           // Left side building
-          const buildingLeft = buildingModel.clone(true);
-          buildingLeft.position.set(config.xLeft, -1 + (config.yOffset || 0), z + (config.zOffset || 0));
-          buildingLeft.rotation.y = config.rotLeft;
-          buildingLeft.traverse((obj) => {
-            if (obj.isMesh) {
-              obj.castShadow = true;
-              obj.receiveShadow = true;
-            }
-          });
-          tavernGroup.add(buildingLeft);
+          if (!modelConfig.rightSideOnly) {
+            const buildingLeft = buildingModel.clone(true);
+            buildingLeft.position.set(config.xLeft, -1 + (config.yOffset || 0), z + (config.zOffset || 0));
+            buildingLeft.rotation.y = config.rotLeft;
+            buildingLeft.traverse((obj) => {
+              if (obj.isMesh) {
+                obj.castShadow = true;
+                obj.receiveShadow = true;
+              }
+            });
+            tavernGroup.add(buildingLeft);
+          }
           
           // Right side building
           const buildingRight = buildingModel.clone(true);
