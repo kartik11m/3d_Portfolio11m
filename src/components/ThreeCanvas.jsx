@@ -1125,10 +1125,10 @@ treeLoader.load('/models/stylized_tree_03_clean.glb', (gltf) => {
             { xLeft: -20, xRight: 20, rotLeft: Math.PI / 2, rotRight: -Math.PI / 2 },
           ]
         },
-        '/models/chinese_fireworks_shop.glb': {
-          scale: 4.5,
+        '/models/stylized_coffee_shop_sketchfabweeklychallenge.glb': {
+          scale: 50,
           configs: [
-            { xLeft: -18, xRight: 18, rotLeft: Math.PI / 2.5, rotRight: -Math.PI / 2.5 },
+            { xLeft: -20, xRight: 20, rotLeft: Math.PI / 3, rotRight: -Math.PI / 3, yOffset: 0, zOffset: 0 },
           ]
         },
         '/models/barber_shop_-_stylised.glb': {
@@ -1192,11 +1192,11 @@ treeLoader.load('/models/stylized_tree_03_clean.glb', (gltf) => {
           applyTextureQuality(buildingModel);
           buildingModel.updateMatrixWorld(true);
           
-          const z = -HALF + (i + 1) * (HALF / (buildingsPerSide * 1.5));
+          const z = -HALF + (i + 1) * (HALF / (buildingsPerSide * 1.3));
           
           // Left side building
           const buildingLeft = buildingModel.clone(true);
-          buildingLeft.position.set(config.xLeft, -1, z);
+          buildingLeft.position.set(config.xLeft, -1 + (config.yOffset || 0), z + (config.zOffset || 0));
           buildingLeft.rotation.y = config.rotLeft;
           buildingLeft.traverse((obj) => {
             if (obj.isMesh) {
@@ -1208,7 +1208,7 @@ treeLoader.load('/models/stylized_tree_03_clean.glb', (gltf) => {
           
           // Right side building
           const buildingRight = buildingModel.clone(true);
-          buildingRight.position.set(config.xRight, -1, z);
+          buildingRight.position.set(config.xRight, -1 + (config.yOffset || 0), z + (config.zOffset || 0));
           buildingRight.rotation.y = config.rotRight;
           buildingRight.traverse((obj) => {
             if (obj.isMesh) {
@@ -1221,6 +1221,72 @@ treeLoader.load('/models/stylized_tree_03_clean.glb', (gltf) => {
       }
       
       group.add(tavernGroup);
+
+      // Load and add second building group far from first group
+      const secondBuildingGroup = new THREE.Group();
+      const secondBuildingLoader = new GLTFLoader();
+      
+      // Map of second building group models
+      const secondBuildingModels = {
+        '/models/stone_well_stylized.glb': {
+          scale: 0.02,
+          configs: [
+            { xLeft: -22, xRight: 22, rotLeft: Math.PI / 2, rotRight: -Math.PI / 2, yOffset: 0, zOffset: 0 },
+          ]
+        },
+        '/models/low-poly_truck_car_drifter.glb': {
+          scale: 0.01,
+          configs: [
+            { xLeft: -20, xRight: 20, rotLeft: 0, rotRight: Math.PI, yOffset: 0.4, zOffset: 0 },
+          ]
+        }
+      };
+
+      const secondBuildingModelPaths = Object.keys(secondBuildingModels);
+      const buildingsPerSideSecond = secondBuildingModelPaths.length;
+
+      for (let i = 0; i < buildingsPerSideSecond; i++) {
+        const modelPath = secondBuildingModelPaths[i];
+        const modelConfig = secondBuildingModels[modelPath];
+        const modelScale = modelConfig.scale;
+        const config = modelConfig.configs[i % modelConfig.configs.length];
+        
+        secondBuildingLoader.load(modelPath, (gltf) => {
+          const buildingModel = gltf.scene;
+          buildingModel.scale.set(modelScale, modelScale, modelScale);
+          applyTextureQuality(buildingModel);
+          buildingModel.updateMatrixWorld(true);
+          
+          // Position far along Z-axis from first group (much larger offset)
+          const z = HALF*2 + (i + 1) * (HALF / (buildingsPerSideSecond * 1.5));
+          
+          // Left side building
+          const buildingLeft = buildingModel.clone(true);
+          buildingLeft.position.set(config.xLeft, -1 + (config.yOffset || 0), z + (config.zOffset || 0));
+          buildingLeft.rotation.y = config.rotLeft;
+          buildingLeft.traverse((obj) => {
+            if (obj.isMesh) {
+              obj.castShadow = true;
+              obj.receiveShadow = true;
+            }
+          });
+          secondBuildingGroup.add(buildingLeft);
+          
+          // Right side building
+          const buildingRight = buildingModel.clone(true);
+          buildingRight.position.set(config.xRight, -1 + (config.yOffset || 0), z + (config.zOffset || 0));
+          buildingRight.rotation.y = config.rotRight;
+          buildingRight.traverse((obj) => {
+            if (obj.isMesh) {
+              obj.castShadow = true;
+              obj.receiveShadow = true;
+            }
+          });
+          secondBuildingGroup.add(buildingRight);
+        });
+      }
+
+      group.add(secondBuildingGroup);
   });
 });
 
