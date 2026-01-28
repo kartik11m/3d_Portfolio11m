@@ -648,7 +648,7 @@ const ThreeCanvas = () => {
           return {
             textureScale: 1.0,
             particleCount: 4000,
-            grassBladesPerSide: 500,   // High quality patches
+            grassBladesPerSide: 200,   // High quality patches
             grassModelSpawnChance: 0.55,
             flowerSpawnChance: 0.5,
             shadowsEnabled: true,
@@ -1071,7 +1071,7 @@ treeLoader.load('/models/stylized_tree_03_clean.glb', (gltf) => {
 
     let treeCounter = 0;
 
-    for (let i = -HALF; i < HALF; i += 10) {
+    for (let i = -HALF; i < HALF; i += 20) {
       treeCounter++;
 
       if (treeCounter % 3 === 0) {
