@@ -1113,46 +1113,112 @@ treeLoader.load('/models/stylized_tree_03_clean.glb', (gltf) => {
     group.add(treeGroup);
     group.add(lampGroup);
 
-      // Load and add stylized fantasy taverns on both sides
+      // Load and add stylized buildings on both sides
       const tavernGroup = new THREE.Group();
-      const tavernLoader = new GLTFLoader();
+      const buildingLoader = new GLTFLoader();
       
-      tavernLoader.load('/models/stylized_house.glb', (gltf) => {
-        const tavernModel = gltf.scene;
-        tavernModel.scale.set(5, 5, 5);
-        applyTextureQuality(tavernModel);
-        tavernModel.updateMatrixWorld(true);
-        
-        // Add two taverns on the left side
-        for (let i = 0; i < 2; i++) {
-          const tavernLeft = tavernModel.clone(true);
-          const z = -HALF + (i + 1) * (HALF / 3.5); // HALF / 3.5 increase this to reduce the space like 4.5
-          tavernLeft.position.set(-15, -1, z);
-          tavernLeft.rotation.y = Math.PI / 2; // Face towards the road
-          tavernLeft.traverse((obj) => {
-            if (obj.isMesh) {
-              obj.castShadow = true;
-              obj.receiveShadow = true;
-            }
-          });
-          tavernGroup.add(tavernLeft);
+      // Map of building models with their specific configurations
+      const buildingModels = {
+        '/models/stylized_house.glb': {
+          scale: 5,
+          configs: [
+            { xLeft: -20, xRight: 20, rotLeft: Math.PI / 2, rotRight: -Math.PI / 2 },
+          ]
+        },
+        '/models/chinese_fireworks_shop.glb': {
+          scale: 4.5,
+          configs: [
+            { xLeft: -18, xRight: 18, rotLeft: Math.PI / 2.5, rotRight: -Math.PI / 2.5 },
+          ]
+        },
+        '/models/barber_shop_-_stylised.glb': {
+          scale: 1,
+          configs: [
+            { xLeft: -20, xRight: 20, rotLeft: Math.PI / 2.2, rotRight: -Math.PI / 2.2 },
+          ]
+        },
+        '/models/ultimate_japanese_konbini.glb': {
+          scale: 0.01,
+          configs: [
+            { xLeft: -25, xRight: 25, rotLeft: 0, rotRight: Math.PI / 1 },
+          ]
         }
-        
-        // Add two taverns on the right side
-        for (let i = 0; i < 2; i++) {
-          const tavernRight = tavernModel.clone(true);
-          const z = -HALF + (i + 1) * (HALF / 3.5);
-          tavernRight.position.set(15, -1, z);
-          tavernRight.rotation.y = -Math.PI / 2; // Face towards the road
-          tavernRight.traverse((obj) => {
-            if (obj.isMesh) {
-              obj.castShadow = true;
-              obj.receiveShadow = true;
-            }
-          });
-          tavernGroup.add(tavernRight);
-        }
+      };
+      
+      const buildingModelPaths = Object.keys(buildingModels);
+      
+      // Shuffle the building paths to randomize order
+      const shuffledPaths = buildingModelPaths.sort(() => Math.random() - 0.5);
+      
+      // Load and place buildings on both sides
+      const buildingsPerSide = buildingModelPaths.length;
+      
+      // Create footpath material
+      const footpathMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8B7355,
+        roughness: 0.8,
+        metalness: 0.0
       });
+      
+      // Create continuous straight footpaths
+      const footpathWidth = 4;
+      const footpathLength = HALF * 2.5; // Covers the entire building area
+      
+      // Left side footpath
+      const footpathLeftGeometry = new THREE.PlaneGeometry(footpathWidth, footpathLength);
+      const footpathLeftMesh = new THREE.Mesh(footpathLeftGeometry, footpathMaterial);
+      footpathLeftMesh.rotation.x = -Math.PI / 2;
+      footpathLeftMesh.position.set(-14, -0.98, 0);
+      footpathLeftMesh.receiveShadow = true;
+      tavernGroup.add(footpathLeftMesh);
+      
+      // Right side footpath
+      const footpathRightGeometry = new THREE.PlaneGeometry(footpathWidth, footpathLength);
+      const footpathRightMesh = new THREE.Mesh(footpathRightGeometry, footpathMaterial);
+      footpathRightMesh.rotation.x = -Math.PI / 2;
+      footpathRightMesh.position.set(14, -0.98, 0);
+      footpathRightMesh.receiveShadow = true;
+      tavernGroup.add(footpathRightMesh);
+      
+      for (let i = 0; i < buildingsPerSide; i++) {
+        const modelPath = shuffledPaths[i];
+        const modelConfig = buildingModels[modelPath];
+        const modelScale = modelConfig.scale;
+        const config = modelConfig.configs[i % modelConfig.configs.length];
+        
+        buildingLoader.load(modelPath, (gltf) => {
+          const buildingModel = gltf.scene;
+          buildingModel.scale.set(modelScale, modelScale, modelScale);
+          applyTextureQuality(buildingModel);
+          buildingModel.updateMatrixWorld(true);
+          
+          const z = -HALF + (i + 1) * (HALF / (buildingsPerSide * 1.5));
+          
+          // Left side building
+          const buildingLeft = buildingModel.clone(true);
+          buildingLeft.position.set(config.xLeft, -1, z);
+          buildingLeft.rotation.y = config.rotLeft;
+          buildingLeft.traverse((obj) => {
+            if (obj.isMesh) {
+              obj.castShadow = true;
+              obj.receiveShadow = true;
+            }
+          });
+          tavernGroup.add(buildingLeft);
+          
+          // Right side building
+          const buildingRight = buildingModel.clone(true);
+          buildingRight.position.set(config.xRight, -1, z);
+          buildingRight.rotation.y = config.rotRight;
+          buildingRight.traverse((obj) => {
+            if (obj.isMesh) {
+              obj.castShadow = true;
+              obj.receiveShadow = true;
+            }
+          });
+          tavernGroup.add(buildingRight);
+        });
+      }
       
       group.add(tavernGroup);
   });
@@ -1202,7 +1268,7 @@ return group;
       planeModel.updateMatrixWorld(true);
       
       // Initial position high in the sky
-      planeModel.position.set(0, 20, -150);
+      planeModel.position.set(0, 20, -300);
       
       // Face the plane towards the camera (pointing forward along +Z)
       planeModel.rotation.y = Math.PI;
@@ -1223,7 +1289,7 @@ return group;
         // Play the first animation by default
         if (planeAnimationClips.length > 0) {
           planeAnimationMixer.clipAction(planeAnimationClips[0]).play();
-          planeAnimationMixer.timeScale = 50; // Speed up animation by 2x
+          planeAnimationMixer.timeScale = 20; // Speed up animation by 2x
         }
       }
       
@@ -1637,17 +1703,17 @@ gltfLoader.load('/models/stylized_fence.glb', (gltf) => {
       // Animate flying plane
       if (planeModel) {
         // Plane moves towards the camera (positive Z direction towards camera)
-        planeModel.position.z += 0.5;  // Faster speed of approach
+        planeModel.position.z += 0.6;  // Faster speed of approach
         
         // Add slight vertical bobbing motion
-        planeModel.position.y = 15 + Math.sin(time * 0.5) * 2;
+        // planeModel.position.y = 15 + Math.sin(time * 0.5) * 2;
         
         // Add slight banking/rolling motion for realism
         // planeModel.rotation.z = Math.sin(time * 0.2) * 0.2;
         
         // Reset position when it gets too close
         if (planeModel.position.z > 20) {
-          planeModel.position.z = -150;
+          planeModel.position.z = -200;
         }
       }
 
